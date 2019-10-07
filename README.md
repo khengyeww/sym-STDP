@@ -2,9 +2,10 @@
 
 This project is created for own undergraduate research.
 
+
 ## Citation
 
-The SNN model in this project was implemented in BindsNet:
+The SNN model in this project was implemented in BindsNET:
 
 Link to [GitHub](https://github.com/Hananel-Hazan/bindsnet).
 
