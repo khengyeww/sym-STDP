@@ -4,13 +4,12 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-from torchvision import transforms
 from tqdm import tqdm
 
 from time import time as t
 
 from model import HaoAndHuang2019
-from bindsnet.datasets import MNIST
+from load_data import load_data
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_weights, get_square_assignments
@@ -25,16 +24,20 @@ from bindsnet.analysis.plotting import (
 )
 
 
+dataset_name = 'MNIST'
+model = 'hao_2019'
+results_path = os.path.join('results', dataset_name.lower())
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--n_neurons", type=int, default=10)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_test", type=int, default=10000)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=250)
+parser.add_argument("--time", type=int, default=150)
 parser.add_argument("--dt", type=int, default=1.0)
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
@@ -96,16 +99,14 @@ network = HaoAndHuang2019(
 if gpu:
     network.to("cuda")
 
-# Load MNIST data.
-dataset = MNIST(
-    PoissonEncoder(time=time, dt=dt),
-    None,
-    root=os.path.join("..", "data", "MNIST"),
-    download=True,
-    transform=transforms.Compose(
-        [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]
-    ),
-)
+# Load data.
+encoder = PoissonEncoder(time=time, dt=dt)
+dataset = load_data(data_name, encoder, intensity)
+
+# Setup directories within path.
+for path in [results_path]:
+    if not os.path.isdir(path):
+        os.makedirs(path)
 
 # Record spikes during the simulation.
 spike_record = torch.zeros(update_interval, time, n_neurons)
@@ -119,11 +120,9 @@ rates = torch.zeros(n_neurons, n_classes)
 # Sequence of accuracy estimates.
 accuracy = {"all": [], "proportion": []}
 
-# Voltage recording for excitatory and inhibitory layers.
+# Voltage recording for excitatory layer.
 exc_voltage_monitor = Monitor(network.layers["Y"], ["v"], time=time)
-#inh_voltage_monitor = Monitor(network.layers["Ai"], ["v"], time=time)
 network.add_monitor(exc_voltage_monitor, name="exc_voltage")
-#network.add_monitor(inh_voltage_monitor, name="inh_voltage")
 
 # Set up monitors for spikes and voltages
 spikes = {}
@@ -242,21 +241,35 @@ for epoch in range(n_epochs):
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
             voltages = {"Y": exc_voltages}
-            #
+
             inpt_axes, inpt_ims = plot_input(
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
             )
-            spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
-            weights_im = plot_weights(square_weights, im=weights_im)
-            assigns_im = plot_assignments(square_assignments, im=assigns_im)
-            perf_ax = plot_performance(accuracy, ax=perf_ax)
-            voltage_ims, voltage_axes = plot_voltages(
-                voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
-            )
+            #spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
+            # weights_im = plot_weights(square_weights, im=weights_im)
+            # assigns_im = plot_assignments(square_assignments, im=assigns_im)
+            # perf_ax = plot_performance(accuracy, ax=perf_ax)
+            # voltage_ims, voltage_axes = plot_voltages(
+            #     voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
+            # )
 
             plt.pause(1e-8)
+            #plt.pause(0.5)
+
+        if step > 5:
+            #pass
+            break
 
         network.reset_()  # Reset state variables.
+
+# Save final network & plots.
+idx = 0
+network.save(os.path.join(results_path, 'network.pt'))
+img = plot_weights(square_weights, im=weights_im)
+idx+=1
+savefile = results_path + '/' + str(idx) + '.png'
+img.figure.savefig(savefile)
+# img.figure.savefig(os.path.join(results_path, 'final_w.png'))
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Training complete.\n")
