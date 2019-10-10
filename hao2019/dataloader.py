@@ -15,7 +15,7 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
             dataset = MNIST(
                 encoder,
                 None,
-                root=os.path.join("..", "data", data_name),
+                root=os.path.join("..", "data", dataset_name),
                 download=True,
                 transform=transforms.Compose(
                     [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]
@@ -26,7 +26,7 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
             dataset = FashionMNIST(
                 encoder,
                 None,
-                root=os.path.join("..", "data", data_name),
+                root=os.path.join("..", "data", dataset_name),
                 download=True,
                 transform=transforms.Compose(
                     [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]

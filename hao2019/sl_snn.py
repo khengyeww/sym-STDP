@@ -3,13 +3,12 @@ import torch
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import imageio
 
 from tqdm import tqdm
 
 from time import time as t
 
-from model import HaoAndHuang2019
-from load_data import load_data
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_weights, get_square_assignments
@@ -22,11 +21,14 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
+from model import HaoAndHuang2019
+from dataloader import load_data
 
 
 dataset_name = 'MNIST'
 model = 'hao_2019'
 results_path = os.path.join('results', dataset_name.lower())
+#gif_path = os.path.join('results', dataset_name.lower(), 'gif')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
@@ -101,7 +103,7 @@ if gpu:
 
 # Load data.
 encoder = PoissonEncoder(time=time, dt=dt)
-dataset = load_data(data_name, encoder, intensity)
+dataset = load_data(dataset_name, encoder, intensity)
 
 # Setup directories within path.
 for path in [results_path]:
@@ -141,6 +143,7 @@ weights_im = None
 assigns_im = None
 perf_ax = None
 voltage_axes, voltage_ims = None, None
+training_progress_images = []
 
 # Train the network.
 print("\nBegin training.\n")
@@ -245,8 +248,8 @@ for epoch in range(n_epochs):
             inpt_axes, inpt_ims = plot_input(
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
             )
-            #spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
-            # weights_im = plot_weights(square_weights, im=weights_im)
+            # spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
+            weights_im = plot_weights(square_weights, im=weights_im)
             # assigns_im = plot_assignments(square_assignments, im=assigns_im)
             # perf_ax = plot_performance(accuracy, ax=perf_ax)
             # voltage_ims, voltage_axes = plot_voltages(
@@ -256,6 +259,14 @@ for epoch in range(n_epochs):
             plt.pause(1e-8)
             #plt.pause(0.5)
 
+            # # Create gif from plot images.
+            # if True:
+            #     # Convert figure to numpy array.
+            #     fig = weights_im.figure
+            #     data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            #     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            #     training_progress_images.append(data)
+
         if step > 5:
             #pass
             break
@@ -264,12 +275,14 @@ for epoch in range(n_epochs):
 
 # Save final network & plots.
 idx = 0
-network.save(os.path.join(results_path, 'network.pt'))
-img = plot_weights(square_weights, im=weights_im)
 idx+=1
-savefile = results_path + '/' + str(idx) + '.png'
-img.figure.savefig(savefile)
+network.save(os.path.join(results_path, 'network.pt'))
+img = plot_weights(square_weights, im=weights_im).figure
+savefile = results_path + '/final_weight.png'
+img.savefig(savefile)
 # img.figure.savefig(os.path.join(results_path, 'final_w.png'))
+
+imageio.mimwrite(results_path + '/exc_weight.gif', training_progress_images)
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Training complete.\n")
