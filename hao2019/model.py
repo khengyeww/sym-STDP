@@ -5,11 +5,12 @@ import torch
 from scipy.spatial.distance import euclidean
 from torch.nn.modules.utils import _pair
 
-from learning import SymPostPre
-from node import SLNodes
 from bindsnet.network import Network
-from bindsnet.network.nodes import Input, DiehlAndCookNodes
+from bindsnet.network.nodes import Input
 from bindsnet.network.topology import Connection
+
+from node import AdaptiveLIFNodes, HaoSLNodes
+from learning import DA_STDP
 
 
 class HaoAndHuang2019(Network):
@@ -26,12 +27,14 @@ class HaoAndHuang2019(Network):
         n_outpt: int,
         n_neurons: int = 100,
         inh: float = 17.5,
-        dt: float = 1.0,
+        dt: float = 0.5,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
         reduction: Optional[callable] = None,
-        wmin: Optional[float] = 0.0,
-        wmax: Optional[float] = 1.0,
-        norm: float = 78.4,
+        in_wmin: Optional[float] = 0.0,
+        in_wmax: Optional[float] = 1.0,
+        out_wmin: Optional[float] = 0.0,
+        out_wmax: Optional[float] = 8.0,
+        norm_scale: float = 0.1,
         theta_plus: float = 0.05,
         tc_theta_decay: float = 1e7,
         inpt_shape: Optional[Iterable[int]] = None,
@@ -47,9 +50,11 @@ class HaoAndHuang2019(Network):
         :param dt: Simulation time step.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events, respectively.
         :param reduction: Method for reducing parameter updates along the minibatch dimension.
-        :param wmin: Minimum allowed weight on input to excitatory synapses.
-        :param wmax: Maximum allowed weight on input to excitatory synapses.
-        :param norm: Input to excitatory layer connection weights normalization constant.
+        :param in_wmin: Minimum allowed weight on input to excitatory synapses.
+        :param in_wmax: Maximum allowed weight on input to excitatory synapses.
+        :param out_wmin: Minimum allowed weight on excitatory synapses to output.
+        :param out_wmax: Maximum allowed weight on excitatory synapses to output.
+        :param norm_scale: Scaling factor of normalization for input to excitatory layer connection weights.
         :param theta_plus: On-spike increment of ``DiehlAndCookNodes`` membrane threshold potential.
         :param tc_theta_decay: Time constant of ``DiehlAndCookNodes`` threshold potential decay.
         :param inpt_shape: The dimensionality of the input layer.
@@ -62,33 +67,41 @@ class HaoAndHuang2019(Network):
         self.n_neurons = n_neurons
         self.inh = inh
         self.dt = dt
+        
+        # Set normalization constant.
+        norm = norm_scale * n_inpt
+
+        # Set time constant of threshold potential decay.
+        tc_theta_decay = self.set_theta_decay(tc_theta_decay)
 
         input_layer = Input(
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
         )
 
-        hidden_layer = DiehlAndCookNodes(
+        hidden_layer = HaoSLNodes(
             n=self.n_neurons,
             traces=True,
             rest=-65.0,
-            reset=-60.0,
-            thresh=-52.0,
-            refrac=5,
+            reset=-65.0,
+            thresh=-72.0,
+            refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            theta_plus=theta_plus,
+            theta_plus=theta_plus, #TODO
             tc_theta_decay=tc_theta_decay,
         )
 
-        output_layer = SLNodes(
+        output_layer = HaoSLNodes(
             n=self.n_outpt,
-            traces=False,
-            rest=-60.0,
-            reset=-45.0,
-            thresh=-40.0,
-            tc_decay=10.0,
+            traces=True,
+            rest=-65.0,
+            reset=-65.0,
+            thresh=-72.0,
             refrac=2,
+            tc_decay=100.0,
             tc_trace=20.0,
+            theta_plus=theta_plus, #TODO
+            tc_theta_decay=tc_theta_decay,
         )
 
         w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
@@ -96,11 +109,11 @@ class HaoAndHuang2019(Network):
             source=input_layer,
             target=hidden_layer,
             w=w,
-            update_rule=SymPostPre,
+            update_rule=DA_STDP,
             nu=nu,
             reduction=reduction,
-            wmin=wmin,
-            wmax=wmax,
+            wmin=in_wmin,
+            wmax=in_wmax,
             norm=norm,
         )
 
@@ -121,11 +134,11 @@ class HaoAndHuang2019(Network):
             source=hidden_layer,
             target=output_layer,
             w=w,
-            #update_rule=SymPostPre,
+            update_rule=DA_STDP,
             nu=nu,
             reduction=reduction,
-            wmin=wmin,
-            wmax=wmax,
+            wmin=out_wmin,
+            wmax=out_wmax,
             norm=norm,
         )
 
@@ -136,3 +149,16 @@ class HaoAndHuang2019(Network):
         self.add_connection(input_connection, source="X", target="Y")
         self.add_connection(recurrent_connection, source="Y", target="Y")
         self.add_connection(output_connection, source="Y", target="Z")
+
+    # Various time constant of threshold potential decay based on number of exc/inh neurons.
+    def set_theta_decay(self, tc_theta_decay) -> float:
+        theta_decay_choices = {
+            100  : 6e6,
+            400  : 6e6,
+            1600 : 8e6,
+            6400 : 2e7,
+            10000: 2e7,
+        }
+        tc_theta_decay = theta_decay_choices.get(self.n_neurons, tc_theta_decay)
+
+        return tc_theta_decay

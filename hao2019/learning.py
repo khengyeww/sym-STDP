@@ -6,15 +6,14 @@ from bindsnet.learning import LearningRule
 from bindsnet.network.topology import (
     AbstractConnection,
     Connection,
-    LocalConnection,
 )
 
 
-class SymPostPre(LearningRule):
+class DA_STDP(LearningRule):
     # language=rst
     """
-    Simple STDP rule involving both pre- and post-synaptic spiking activity. The pre-synaptic update is negative, while
-    the post-synpatic update is positive.
+    Simple STDP rule involving both pre- and post-synaptic spiking activity. Both pre-synaptic update and
+    post-synpatic update is positive.
     """
 
     def __init__(
@@ -27,8 +26,8 @@ class SymPostPre(LearningRule):
     ) -> None:
         # language=rst
         """
-        Constructor for ``PostPre`` learning rule.
-        :param connection: An ``AbstractConnection`` object whose weights the ``PostPre`` learning rule will modify.
+        Constructor for ``DA_STDP`` learning rule.
+        :param connection: An ``AbstractConnection`` object whose weights the ``DA_STDP`` learning rule will modify.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events, respectively.
         :param reduction: Method for reducing parameter updates along the minibatch dimension.
         :param weight_decay: Constant multiple to decay weights by on each iteration.
@@ -45,7 +44,7 @@ class SymPostPre(LearningRule):
             self.source.traces and self.target.traces
         ), "Both pre- and post-synaptic nodes must record spike traces."
 
-        if isinstance(connection, (Connection, LocalConnection)):
+        if isinstance(connection, (Connection)):
             self.update = self._connection_update
         else:
             raise NotImplementedError(
@@ -67,7 +66,7 @@ class SymPostPre(LearningRule):
         # Pre-synaptic update.
         if self.nu[0]:
             update = self.reduction(torch.bmm(source_s, target_x), dim=0)
-            self.connection.w -= self.nu[0] * update
+            self.connection.w += self.nu[0] * update
 
         # Post-synaptic update.
         if self.nu[1]:
