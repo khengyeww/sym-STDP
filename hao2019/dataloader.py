@@ -35,6 +35,6 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
 
         return dataset
     
-    except Exception as e:
-        raise NameError("name %s is not defined" %data_name)
+    except:
+        raise NameError("Name %s is not defined" %data_name)
         #raise NameError("name {} is not defined".format(data_name))
