@@ -21,6 +21,7 @@ from bindsnet.analysis.plotting import (
     plot_performance,
     plot_voltages,
 )
+
 from model import HaoAndHuang2019
 from dataloader import load_data
 
@@ -38,9 +39,11 @@ parser.add_argument("--n_test", type=int, default=10000)
 parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
-parser.add_argument("--theta_plus", type=float, default=0.05)
-parser.add_argument("--time", type=int, default=150)
-parser.add_argument("--dt", type=int, default=1.0)
+parser.add_argument("--norm_scale", type=float, default=0.1)
+parser.add_argument("--theta_plus", type=float, default=0.05) #TODO
+parser.add_argument("--spike_time", type=int, default=350)
+parser.add_argument("--rest_time", type=int, default=150)
+parser.add_argument("--dt", type=int, default=1) #TODO
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
@@ -48,7 +51,7 @@ parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(plot=False, gpu=False, train=True)
+parser.set_defaults(train=True, plot=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -59,8 +62,10 @@ n_test = args.n_test
 n_workers = args.n_workers
 exc = args.exc
 inh = args.inh
+norm_scale = args.norm_scale
 theta_plus = args.theta_plus
-time = args.time
+spike_time = args.spike_time
+rest_time = args.rest_time
 dt = args.dt
 intensity = args.intensity
 progress_interval = args.progress_interval
@@ -79,6 +84,8 @@ else:
 if n_workers == -1:
     n_workers = gpu * 4 * torch.cuda.device_count()
 
+time = spike_time + rest_time
+
 if not train:
     update_interval = n_test
 
@@ -88,11 +95,11 @@ start_intensity = intensity
 # Build network.
 network = HaoAndHuang2019(
     n_inpt=784,
-    n_neurons=n_neurons,
     n_outpt=10,
+    n_neurons=n_neurons,
     inh=inh,
     dt=dt,
-    norm=78.4,
+    norm_scale=norm_scale,
     theta_plus=theta_plus,
     inpt_shape=(1, 28, 28),
 )
@@ -260,29 +267,27 @@ for epoch in range(n_epochs):
             #plt.pause(0.5)
 
             # # Create gif from plot images.
-            # if True:
-            #     # Convert figure to numpy array.
-            #     fig = weights_im.figure
-            #     data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-            #     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            #     training_progress_images.append(data)
+            # fig = weights_im.figure
+            # # Convert figure to numpy array.
+            # data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            # data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            # training_progress_images.append(data)
 
-        if step > 5:
+        if step > 20:
             #pass
             break
 
         network.reset_()  # Reset state variables.
 
 # Save final network & plots.
-idx = 0
-idx+=1
 network.save(os.path.join(results_path, 'network.pt'))
-img = plot_weights(square_weights, im=weights_im).figure
-savefile = results_path + '/final_weight.png'
-img.savefig(savefile)
-# img.figure.savefig(os.path.join(results_path, 'final_w.png'))
 
-imageio.mimwrite(results_path + '/exc_weight.gif', training_progress_images)
+if plot:
+    #plt.savefig(results_path + '/final.png')
+    # or
+    img = plot_weights(square_weights, im=weights_im).figure
+    img.savefig(results_path + '/final_weightaaaaaaaaaaaaa.png')
+    # imageio.mimwrite(results_path + '/exc_weight.gif', training_progress_images)
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
 print("Training complete.\n")
