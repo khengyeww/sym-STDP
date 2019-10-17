@@ -35,7 +35,7 @@ class HaoAndHuang2019(Network):
         out_wmin: Optional[float] = 0.0,
         out_wmax: Optional[float] = 8.0,
         norm_scale: float = 0.1,
-        theta_plus: float = 0.05,
+        theta_plus: float = 0.07,
         tc_theta_decay: float = 1e7,
         inpt_shape: Optional[Iterable[int]] = None,
     ) -> None:
@@ -45,18 +45,24 @@ class HaoAndHuang2019(Network):
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.
-        :param n_outpt: Number of output neurons. Usually is set to the number of labels (classes).
+        :param n_outpt: Number of output neurons. Matches the number of
+            labels (classes).
         :param inh: Strength of synapse weights from inhibitory to excitatory layer.
         :param dt: Simulation time step.
-        :param nu: Single or pair of learning rates for pre- and post-synaptic events, respectively.
-        :param reduction: Method for reducing parameter updates along the minibatch dimension.
+        :param nu: Single or pair of learning rates for pre- and post-synaptic events,
+            respectively.
+        :param reduction: Method for reducing parameter updates along the minibatch
+            dimension.
         :param in_wmin: Minimum allowed weight on input to excitatory synapses.
         :param in_wmax: Maximum allowed weight on input to excitatory synapses.
         :param out_wmin: Minimum allowed weight on excitatory synapses to output.
         :param out_wmax: Maximum allowed weight on excitatory synapses to output.
-        :param norm_scale: Scaling factor of normalization for input to excitatory layer connection weights.
-        :param theta_plus: On-spike increment of ``DiehlAndCookNodes`` membrane threshold potential.
-        :param tc_theta_decay: Time constant of ``DiehlAndCookNodes`` threshold potential decay.
+        :param norm_scale: Scaling factor of normalization for
+            layer connection weights.
+        :param theta_plus: On-spike increment of ``HaoSLNodes`` membrane
+            threshold potential.
+        :param tc_theta_decay: Time constant of ``HaoSLNodes`` threshold
+            potential decay.
         :param inpt_shape: The dimensionality of the input layer.
         """
         super().__init__(dt=dt)
@@ -83,7 +89,7 @@ class HaoAndHuang2019(Network):
             traces=True,
             rest=-65.0,
             reset=-65.0,
-            thresh=-72.0,
+            thresh=-75.0,
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -96,7 +102,7 @@ class HaoAndHuang2019(Network):
             traces=True,
             rest=-65.0,
             reset=-65.0,
-            thresh=-72.0,
+            thresh=-52.0,
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
@@ -150,7 +156,8 @@ class HaoAndHuang2019(Network):
         self.add_connection(recurrent_connection, source="Y", target="Y")
         self.add_connection(output_connection, source="Y", target="Z")
 
-    # Various time constant of threshold potential decay based on number of exc/inh neurons.
+    # Various time constant of threshold potential decay
+    #   based on number of exc/inh neurons.
     def set_theta_decay(self, tc_theta_decay) -> float:
         theta_decay_choices = {
             100  : 6e6,

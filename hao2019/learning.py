@@ -12,8 +12,8 @@ from bindsnet.network.topology import (
 class DA_STDP(LearningRule):
     # language=rst
     """
-    Simple STDP rule involving both pre- and post-synaptic spiking activity. Both pre-synaptic update and
-    post-synpatic update is positive.
+    Simple STDP rule involving both pre- and post-synaptic spiking activity.
+    Both pre- and post-synpatic update are positive.
     """
 
     def __init__(
@@ -27,9 +27,11 @@ class DA_STDP(LearningRule):
         # language=rst
         """
         Constructor for ``DA_STDP`` learning rule.
-        :param connection: An ``AbstractConnection`` object whose weights the ``DA_STDP`` learning rule will modify.
-        :param nu: Single or pair of learning rates for pre- and post-synaptic events, respectively.
-        :param reduction: Method for reducing parameter updates along the minibatch dimension.
+        :param connection: An ``AbstractConnection`` object whose weights the
+            ``DA_STDP`` learning rule will modify.
+        :param nu: Single or pair of learning rates for pre- and post-synaptic events.
+        :param reduction: Method for reducing parameter updates along the batch
+            dimension.
         :param weight_decay: Constant multiple to decay weights by on each iteration.
         """
         super().__init__(
@@ -54,7 +56,8 @@ class DA_STDP(LearningRule):
     def _connection_update(self, **kwargs) -> None:
         # language=rst
         """
-        Post-pre learning rule for ``Connection`` subclass of ``AbstractConnection`` class.
+        Post-pre learning rule for ``Connection`` subclass of ``AbstractConnection``
+        class.
         """
         batch_size = self.source.batch_size
 

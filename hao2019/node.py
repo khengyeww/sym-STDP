@@ -6,8 +6,7 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 
-class SLNodes(Nodes):
-#class AdaptiveLIFNodes(Nodes):
+class AdaptiveLIFNodes(Nodes):
     # language=rst
     """
     Layer of leaky integrate-and-fire (LIF) neurons with adaptive thresholds. A neuron's voltage threshold is increased
@@ -127,12 +126,12 @@ class SLNodes(Nodes):
 
         super().forward(x)
 
-    def reset_(self) -> None:
+    def reset_state_variables(self) -> None:
         # language=rst
         """
         Resets relevant state variables.
         """
-        super().reset_()
+        super().reset_state_variables()
         self.v.fill_(self.rest)  # Neuron voltages.
         self.refrac_count.zero_()  # Refractory period counters.
 
@@ -161,7 +160,7 @@ class SLNodes(Nodes):
         self.refrac_count = torch.zeros_like(self.v, device=self.refrac_count.device)
 
 
-class DiehlAndCookNodes(Nodes):
+class HaoSLNodes(Nodes):
     # language=rst
     """
     Layer of leaky integrate-and-fire (LIF) neurons with adaptive thresholds (modified for Diehl & Cook 2015
@@ -276,7 +275,13 @@ class DiehlAndCookNodes(Nodes):
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
         if self.learning:
+            # print("helllllllllllllllllllllllo")
+            # print(self.theta)
+            # print(self.theta_plus)
+            # print(self.s.float().sum(0))
             self.theta += self.theta_plus * self.s.float().sum(0)
+            # print("helllllllllllllllll233333333333333")
+            # print(self.theta)
 
         # Choose only a single neuron to spike.
         if self.one_spike:
@@ -293,14 +298,16 @@ class DiehlAndCookNodes(Nodes):
         if self.lbound is not None:
             self.v.masked_fill_(self.v < self.lbound, self.lbound)
 
+        # print("FINALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")        
+        # print(self.v)
         super().forward(x)
 
-    def reset_(self) -> None:
+    def reset_state_variables(self) -> None:
         # language=rst
         """
         Resets relevant state variables.
         """
-        super().reset_()
+        super().reset_state_variables()
         self.v.fill_(self.rest)  # Neuron voltages.
         self.refrac_count.zero_()  # Refractory period counters.
 

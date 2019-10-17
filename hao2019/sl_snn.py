@@ -46,7 +46,7 @@ parser.add_argument("--rest_time", type=int, default=150)
 parser.add_argument("--dt", type=int, default=1) #TODO
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=250)
+parser.add_argument("--update_interval", type=int, default=10)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -170,9 +170,9 @@ for epoch in range(n_epochs):
 
     for step, batch in enumerate(tqdm(dataloader)):
         # Get next input sample.
-        inpts = {"X": batch["encoded_image"].view(time, 1, 1, 28, 28)}
+        inputs = {"X": batch["encoded_image"].view(time, 1, 1, 28, 28)}
         if gpu:
-            inpts = {k: v.cuda() for k, v in inpts.items()}
+            inputs = {k: v.cuda() for k, v in inputs.items()}
 
         if step % update_interval == 0 and step > 0:
             # Convert the array of labels into a tensor
@@ -231,7 +231,7 @@ for epoch in range(n_epochs):
         labels.append(batch["label"])
         
         # Run the network on the input.
-        network.run(inpts=inpts, time=time, input_time_dim=1)
+        network.run(inputs=inputs, time=time, input_time_dim=1)
 
         # Get voltage recording.
         exc_voltages = exc_voltage_monitor.get("v")
@@ -243,7 +243,7 @@ for epoch in range(n_epochs):
         # Optionally plot various simulation information.
         if plot:
             image = batch["image"].view(28, 28)
-            inpt = inpts["X"].view(time, 784).sum(0).view(28, 28)
+            inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
             input_exc_weights = network.connections[("X", "Y")].w
             square_weights = get_square_weights(
                 input_exc_weights.view(784, n_neurons), n_sqrt, 28
@@ -259,9 +259,9 @@ for epoch in range(n_epochs):
             weights_im = plot_weights(square_weights, im=weights_im)
             # assigns_im = plot_assignments(square_assignments, im=assigns_im)
             # perf_ax = plot_performance(accuracy, ax=perf_ax)
-            # voltage_ims, voltage_axes = plot_voltages(
-            #     voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
-            # )
+            voltage_ims, voltage_axes = plot_voltages(
+                voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
+            )
 
             plt.pause(1e-8)
             #plt.pause(0.5)
@@ -277,16 +277,15 @@ for epoch in range(n_epochs):
             #pass
             break
 
-        network.reset_()  # Reset state variables.
+        network.reset_state_variables()  # Reset state variables.
 
 # Save final network & plots.
 network.save(os.path.join(results_path, 'network.pt'))
-
 if plot:
+    # Alternative way:
     #plt.savefig(results_path + '/final.png')
-    # or
     img = plot_weights(square_weights, im=weights_im).figure
-    img.savefig(results_path + '/final_weightaaaaaaaaaaaaa.png')
+    img.savefig(results_path + '/test_final_weight.png')
     # imageio.mimwrite(results_path + '/exc_weight.gif', training_progress_images)
 
 print("Progress: %d / %d (%.4f seconds)" % (epoch + 1, n_epochs, t() - start))
