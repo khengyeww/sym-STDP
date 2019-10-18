@@ -9,7 +9,7 @@ from bindsnet.network import Network
 from bindsnet.network.nodes import Input
 from bindsnet.network.topology import Connection
 
-from node import AdaptiveLIFNodes, HaoSLNodes
+from node import HaoSLNodes
 from learning import DA_STDP
 
 
@@ -77,8 +77,12 @@ class HaoAndHuang2019(Network):
         # Set normalization constant.
         norm = norm_scale * n_inpt
 
-        # Set time constant of threshold potential decay.
-        tc_theta_decay = self.set_theta_decay(tc_theta_decay)
+        theta_plus = 8.4e5 #TODO
+        
+        default_value = (tc_theta_decay, theta_plus)
+        
+        # Set constants based on network size.
+        tc_theta_decay, theta_plus = self.network_params(default_value)
 
         input_layer = Input(
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
@@ -89,12 +93,13 @@ class HaoAndHuang2019(Network):
             traces=True,
             rest=-65.0,
             reset=-65.0,
-            thresh=-75.0,
+            thresh=-72.0,
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            theta_plus=theta_plus, #TODO
+            theta_plus=0.07, #TODO
             tc_theta_decay=tc_theta_decay,
+            # lbound=-65.0, #TODO
         )
 
         output_layer = HaoSLNodes(
@@ -102,12 +107,13 @@ class HaoAndHuang2019(Network):
             traces=True,
             rest=-65.0,
             reset=-65.0,
-            thresh=-52.0,
+            thresh=-72.0,
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            theta_plus=theta_plus, #TODO
+            theta_plus=0.07, #TODO
             tc_theta_decay=tc_theta_decay,
+            # lbound=-65.0, #TODO
         )
 
         w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
@@ -156,16 +162,16 @@ class HaoAndHuang2019(Network):
         self.add_connection(recurrent_connection, source="Y", target="Y")
         self.add_connection(output_connection, source="Y", target="Z")
 
-    # Various time constant of threshold potential decay
-    #   based on number of exc/inh neurons.
-    def set_theta_decay(self, tc_theta_decay) -> float:
-        theta_decay_choices = {
-            100  : 6e6,
-            400  : 6e6,
-            1600 : 8e6,
-            6400 : 2e7,
-            10000: 2e7,
+    def network_params(self, default_value) -> float:
+        # Set time constant of threshold potential decay & decay factor
+        # for different sized network.
+        params_choices = {
+            100  : (6e6, 8.4e5),
+            400  : (6e6, 8.4e5),
+            1600 : (8e6, 1.12e6),
+            6400 : (2e7, 2e6),
+            10000: (2e7, 2e6),
         }
-        tc_theta_decay = theta_decay_choices.get(self.n_neurons, tc_theta_decay)
+        params = params_choices.get(self.n_neurons, default_value)
 
-        return tc_theta_decay
+        return params[0], params[1]

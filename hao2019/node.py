@@ -6,11 +6,11 @@ import torch
 from bindsnet.network.nodes import Nodes
 
 
-class AdaptiveLIFNodes(Nodes):
+class HaoSLNodes(Nodes):
     # language=rst
     """
-    Layer of leaky integrate-and-fire (LIF) neurons with adaptive thresholds. A neuron's voltage threshold is increased
-    by some constant each time it spikes; otherwise, it is decaying back to its default value.
+    Layer of leaky integrate-and-fire (LIF) neurons with adaptive thresholds
+    (modified for Hao & Huang 2019 replication).
     """
 
     def __init__(
@@ -34,7 +34,7 @@ class AdaptiveLIFNodes(Nodes):
     ) -> None:
         # language=rst
         """
-        Instantiates a layer of LIF neurons with adaptive firing thresholds.
+        Instantiates a layer of Hao & Huang 2019 neurons.
 
         :param n: The number of neurons in the layer.
         :param shape: The dimensionality of the layer.
@@ -100,8 +100,8 @@ class AdaptiveLIFNodes(Nodes):
         """
         # Decay voltages and adaptive thresholds.
         self.v = self.decay * (self.v - self.rest) + self.rest
-        if self.learning:
-            self.theta *= self.theta_decay
+        #if self.learning:
+        self.theta *= self.theta_decay
 
         # Integrate inputs.
         self.v += (self.refrac_count == 0).float() * x
@@ -117,8 +117,12 @@ class AdaptiveLIFNodes(Nodes):
         # Refractoriness, voltage reset, and adaptive thresholds.
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
-        if self.learning:
-            self.theta += self.theta_plus * self.s.float().sum(0)
+        #if self.learning:
+        self.theta += (20 / (2 * self.theta - 20).abs()) * self.theta_plus * self.s.float().sum(0)
+        # self.theta += self.theta_plus * self.s.float().sum(0)
+
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        print(self.theta)
 
         # voltage clipping to lowerbound
         if self.lbound is not None:
@@ -160,7 +164,7 @@ class AdaptiveLIFNodes(Nodes):
         self.refrac_count = torch.zeros_like(self.v, device=self.refrac_count.device)
 
 
-class HaoSLNodes(Nodes):
+class Haov2Nodes(Nodes):
     # language=rst
     """
     Layer of leaky integrate-and-fire (LIF) neurons with adaptive thresholds (modified for Diehl & Cook 2015
@@ -275,13 +279,7 @@ class HaoSLNodes(Nodes):
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
         if self.learning:
-            # print("helllllllllllllllllllllllo")
-            # print(self.theta)
-            # print(self.theta_plus)
-            # print(self.s.float().sum(0))
             self.theta += self.theta_plus * self.s.float().sum(0)
-            # print("helllllllllllllllll233333333333333")
-            # print(self.theta)
 
         # Choose only a single neuron to spike.
         if self.one_spike:
@@ -298,8 +296,6 @@ class HaoSLNodes(Nodes):
         if self.lbound is not None:
             self.v.masked_fill_(self.v < self.lbound, self.lbound)
 
-        # print("FINALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL")        
-        # print(self.v)
         super().forward(x)
 
     def reset_state_variables(self) -> None:

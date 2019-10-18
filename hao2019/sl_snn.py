@@ -22,12 +22,12 @@ from bindsnet.analysis.plotting import (
     plot_voltages,
 )
 
-from model import HaoAndHuang2019
 from dataloader import load_data
+from model import HaoAndHuang2019
 
 
 dataset_name = 'MNIST'
-model = 'hao_2019'
+model_name = 'hao_2019'
 results_path = os.path.join('results', dataset_name.lower())
 #gif_path = os.path.join('results', dataset_name.lower(), 'gif')
 
@@ -40,13 +40,12 @@ parser.add_argument("--n_workers", type=int, default=-1)
 parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--norm_scale", type=float, default=0.1)
-parser.add_argument("--theta_plus", type=float, default=0.05) #TODO
-parser.add_argument("--spike_time", type=int, default=350)
-parser.add_argument("--rest_time", type=int, default=150)
-parser.add_argument("--dt", type=int, default=1) #TODO
+parser.add_argument("--theta_plus", type=float, default=0.07)
+parser.add_argument("--time", type=int, default=350)
+parser.add_argument("--dt", type=int, default=0.5)
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=10)
+parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -64,8 +63,7 @@ exc = args.exc
 inh = args.inh
 norm_scale = args.norm_scale
 theta_plus = args.theta_plus
-spike_time = args.spike_time
-rest_time = args.rest_time
+time = args.time
 dt = args.dt
 intensity = args.intensity
 progress_interval = args.progress_interval
@@ -83,8 +81,6 @@ else:
 # Determines number of workers to use
 if n_workers == -1:
     n_workers = gpu * 4 * torch.cuda.device_count()
-
-time = spike_time + rest_time
 
 if not train:
     update_interval = n_test
@@ -170,7 +166,10 @@ for epoch in range(n_epochs):
 
     for step, batch in enumerate(tqdm(dataloader)):
         # Get next input sample.
-        inputs = {"X": batch["encoded_image"].view(time, 1, 1, 28, 28)}
+        inputs = {
+            "X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
+            #"Z": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
+        }
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -240,10 +239,14 @@ for epoch in range(n_epochs):
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Y"].get("s").squeeze()
 
+        # print("TESSSSSSSSSSSSSSSSSSSSSSSST")
+        # print(spikes["Y"].get("s"))
+        # print(len(spikes["Y"].get("s")))
+
         # Optionally plot various simulation information.
         if plot:
             image = batch["image"].view(28, 28)
-            inpt = inputs["X"].view(time, 784).sum(0).view(28, 28)
+            inpt = inputs["X"].view(int(time/dt), 784).sum(0).view(28, 28)
             input_exc_weights = network.connections[("X", "Y")].w
             square_weights = get_square_weights(
                 input_exc_weights.view(784, n_neurons), n_sqrt, 28
@@ -280,7 +283,7 @@ for epoch in range(n_epochs):
         network.reset_state_variables()  # Reset state variables.
 
 # Save final network & plots.
-network.save(os.path.join(results_path, 'network.pt'))
+#network.save(os.path.join(results_path, 'network.pt'))
 if plot:
     # Alternative way:
     #plt.savefig(results_path + '/final.png')
