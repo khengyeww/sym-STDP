@@ -11,6 +11,7 @@ from bindsnet.network.topology import Connection
 
 from node import HaoSLNodes
 from learning import DA_STDP
+from utils import get_network_const
 
 
 class HaoAndHuang2019(Network):
@@ -82,7 +83,7 @@ class HaoAndHuang2019(Network):
         default_value = (tc_theta_decay, theta_plus)
         
         # Set constants based on network size.
-        tc_theta_decay, theta_plus = self.network_params(default_value)
+        tc_theta_decay, theta_plus = get_network_const(self.n_neurons, default_value)
 
         input_layer = Input(
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
@@ -161,17 +162,3 @@ class HaoAndHuang2019(Network):
         self.add_connection(input_connection, source="X", target="Y")
         self.add_connection(recurrent_connection, source="Y", target="Y")
         self.add_connection(output_connection, source="Y", target="Z")
-
-    def network_params(self, default_value) -> float:
-        # Set time constant of threshold potential decay & decay factor
-        # for different sized network.
-        params_choices = {
-            100  : (6e6, 8.4e5),
-            400  : (6e6, 8.4e5),
-            1600 : (8e6, 1.12e6),
-            6400 : (2e7, 2e6),
-            10000: (2e7, 2e6),
-        }
-        params = params_choices.get(self.n_neurons, default_value)
-
-        return params[0], params[1]

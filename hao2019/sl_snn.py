@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from time import time as t
 
+from bindsnet import encoding
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_weights, get_square_assignments
@@ -22,8 +23,8 @@ from bindsnet.analysis.plotting import (
     plot_voltages,
 )
 
-from dataloader import load_data
 from model import HaoAndHuang2019
+from utils import load_data
 
 
 dataset_name = 'MNIST'
@@ -165,11 +166,19 @@ for epoch in range(n_epochs):
     )
 
     for step, batch in enumerate(tqdm(dataloader)):
+
+        data = 15 * torch.rand(100)  # Generate random Poisson rates for 100 input neurons.
+        train = encoding.poisson(datum=data, time=time, dt=dt)  # Encode input as 5000ms Poisson spike trains.
+
+        print("kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
+        print(train.shape)
         # Get next input sample.
         inputs = {
             "X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
             #"Z": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
         }
+        # print("aaaaaaaaaaaaaaaaaaaaaaaa")
+        # print(batch["encoded_image"])
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -233,12 +242,14 @@ for epoch in range(n_epochs):
         network.run(inputs=inputs, time=time, input_time_dim=1)
 
         # Get voltage recording.
-        exc_voltages = exc_voltage_monitor.get("v")
+        # exc_voltages = exc_voltage_monitor.get("v")
+        y_voltages = voltages["Y"].get("v")
         #inh_voltages = inh_voltage_monitor.get("v")
 
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Y"].get("s").squeeze()
 
+        # TODO
         # print("TESSSSSSSSSSSSSSSSSSSSSSSST")
         # print(spikes["Y"].get("s"))
         # print(len(spikes["Y"].get("s")))
@@ -253,7 +264,7 @@ for epoch in range(n_epochs):
             )
             square_assignments = get_square_assignments(assignments, n_sqrt)
             spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
-            voltages = {"Y": exc_voltages}
+            voltages_ = {"Y": y_voltages}
 
             inpt_axes, inpt_ims = plot_input(
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
@@ -263,7 +274,7 @@ for epoch in range(n_epochs):
             # assigns_im = plot_assignments(square_assignments, im=assigns_im)
             # perf_ax = plot_performance(accuracy, ax=perf_ax)
             voltage_ims, voltage_axes = plot_voltages(
-                voltages, ims=voltage_ims, axes=voltage_axes, plot_type="line"
+                voltages_, ims=voltage_ims, axes=voltage_axes, plot_type="line"
             )
 
             plt.pause(1e-8)
