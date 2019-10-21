@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from time import time as t
 
-from bindsnet import encoding
 from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_weights, get_square_assignments
@@ -24,11 +23,14 @@ from bindsnet.analysis.plotting import (
 )
 
 from model import HaoAndHuang2019
-from utils import load_data
+from utils import load_data, sl_poisson
 
 
+# Define dataset and number of input / output neurons.
 dataset_name = 'MNIST'
-model_name = 'hao_2019'
+n_inpt = 784
+n_outpt = 10
+# model_name = 'hao_2019'
 results_path = os.path.join('results', dataset_name.lower())
 #gif_path = os.path.join('results', dataset_name.lower(), 'gif')
 
@@ -91,8 +93,8 @@ start_intensity = intensity
 
 # Build network.
 network = HaoAndHuang2019(
-    n_inpt=784,
-    n_outpt=10,
+    n_inpt=n_inpt,
+    n_outpt=n_outpt,
     n_neurons=n_neurons,
     inh=inh,
     dt=dt,
@@ -167,18 +169,20 @@ for epoch in range(n_epochs):
 
     for step, batch in enumerate(tqdm(dataloader)):
 
-        data = 15 * torch.rand(100)  # Generate random Poisson rates for 100 input neurons.
-        train = encoding.poisson(datum=data, time=time, dt=dt)  # Encode input as 5000ms Poisson spike trains.
+        if train:
+            # Generate 0Hz or 200Hz Poisson rates for SL neurons.
+            sl_label = torch.zeros(n_outpt)
+            sl_label[batch["label"]] = 1.0
+            sl_spike = sl_poisson(datum=sl_label, time=time, dt=dt)
 
-        print("kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
-        print(train.shape)
-        # Get next input sample.
-        inputs = {
-            "X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
-            #"Z": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
-        }
-        # print("aaaaaaaaaaaaaaaaaaaaaaaa")
-        # print(batch["encoded_image"])
+            # Get next input sample.
+            inputs = {
+                "X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
+                "Z": sl_spike,
+            }
+        else:
+            # Get next input sample.
+            inputs = {"X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28)}
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
 
