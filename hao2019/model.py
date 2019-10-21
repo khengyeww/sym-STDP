@@ -9,7 +9,7 @@ from bindsnet.network import Network
 from bindsnet.network.nodes import Input
 from bindsnet.network.topology import Connection
 
-from node import HaoSLNodes
+from node import HaoExcNodes, HaoSLNodes
 from learning import DA_STDP
 from utils import get_network_const
 
@@ -37,7 +37,7 @@ class HaoAndHuang2019(Network):
         out_wmax: Optional[float] = 8.0,
         norm_scale: float = 0.1,
         theta_plus: float = 0.07,
-        tc_theta_decay: float = 1e7,
+        tc_theta_decay: float = 2e7,
         inpt_shape: Optional[Iterable[int]] = None,
     ) -> None:
         # language=rst
@@ -60,9 +60,9 @@ class HaoAndHuang2019(Network):
         :param out_wmax: Maximum allowed weight on excitatory synapses to output.
         :param norm_scale: Scaling factor of normalization for
             layer connection weights.
-        :param theta_plus: On-spike increment of ``HaoSLNodes`` membrane
+        :param theta_plus: On-spike increment of ``HaoExcNodes`` membrane
             threshold potential.
-        :param tc_theta_decay: Time constant of ``HaoSLNodes`` threshold
+        :param tc_theta_decay: Time constant of ``HaoExcNodes`` threshold
             potential decay.
         :param inpt_shape: The dimensionality of the input layer.
         """
@@ -78,6 +78,7 @@ class HaoAndHuang2019(Network):
         # Set normalization constant.
         norm = norm_scale * n_inpt
 
+        #theta_plus? alpha factor?
         theta_plus = 8.4e5 #TODO
         
         default_value = (tc_theta_decay, theta_plus)
@@ -89,32 +90,29 @@ class HaoAndHuang2019(Network):
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
         )
 
-        hidden_layer = HaoSLNodes(
+        hidden_layer = HaoExcNodes(
             n=self.n_neurons,
             traces=True,
             rest=-65.0,
             reset=-65.0,
-            thresh=-72.0,
+            thresh=-52.0,
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            theta_plus=0.07, #TODO
+            theta_plus=theta_plus, #TODO
+            # theta_plus=0.07, #TODO
             tc_theta_decay=tc_theta_decay,
-            # lbound=-65.0, #TODO
+            lbound=-100.0,
         )
 
         output_layer = HaoSLNodes(
             n=self.n_outpt,
             traces=True,
-            rest=-65.0,
-            reset=-65.0,
-            thresh=-72.0,
-            refrac=2,
-            tc_decay=100.0,
+            rest=-60.0,
+            reset=-45.0,
+            thresh=-40.0,
+            tc_decay=10.0,
             tc_trace=20.0,
-            theta_plus=0.07, #TODO
-            tc_theta_decay=tc_theta_decay,
-            # lbound=-65.0, #TODO
         )
 
         w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
