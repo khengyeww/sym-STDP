@@ -33,6 +33,7 @@ n_outpt = 10
 # model_name = 'hao_2019'
 results_path = os.path.join('results', dataset_name.lower())
 #gif_path = os.path.join('results', dataset_name.lower(), 'gif')
+# torch.set_printoptions(profile="full")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
@@ -120,7 +121,7 @@ for path in [results_path]:
 spike_record = torch.zeros(update_interval, time, n_neurons)
 
 # Neuron assignments and spike proportions.
-n_classes = 10
+n_classes = n_outpt
 assignments = -torch.ones(n_neurons)
 proportions = torch.zeros(n_neurons, n_classes)
 rates = torch.zeros(n_neurons, n_classes)
@@ -154,6 +155,7 @@ training_progress_images = []
 # Train the network.
 print("\nBegin training.\n")
 start = t()
+clamp = {}
 
 for epoch in range(n_epochs):
     labels = []
@@ -168,23 +170,19 @@ for epoch in range(n_epochs):
     )
 
     for step, batch in enumerate(tqdm(dataloader)):
+        # Get next input sample.
+        inputs = {"X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28)}
 
+        # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
         if train:
-            # Generate 0Hz or 200Hz Poisson rates for SL neurons.
-            sl_label = torch.zeros(n_outpt)
+            sl_label = torch.zeros(n_outpt).byte()
             sl_label[batch["label"]] = 1.0
             sl_spike = sl_poisson(datum=sl_label, time=time, dt=dt)
-
-            # Get next input sample.
-            inputs = {
-                "X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28),
-                "Z": sl_spike,
-            }
-        else:
-            # Get next input sample.
-            inputs = {"X": batch["encoded_image"].view(int(time/dt), 1, 1, 28, 28)}
+            
+            clamp = {"Z": sl_spike}
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
+            clamp = {k: v.cuda() for k, v in clamp.items()}
 
         if step % update_interval == 0 and step > 0:
             # Convert the array of labels into a tensor
@@ -243,7 +241,20 @@ for epoch in range(n_epochs):
         labels.append(batch["label"])
         
         # Run the network on the input.
-        network.run(inputs=inputs, time=time, input_time_dim=1)
+        network.run(inputs=inputs, time=time, input_time_dim=1, clamp=clamp)
+
+        # Re-present the input sample with increased firing rate
+        # if excitatory neurons fire less than five spikes.
+        exc_spike = spikes["Y"].get("s").squeeze()
+        exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
+        while exc_spike_count < 5:
+            network.reset_state_variables()
+            #TODO increase firing rate?
+            print("MOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOFO")
+            network.run(inputs=inputs, time=time, input_time_dim=1, clamp=clamp)
+
+            exc_spike = spikes["Y"].get("s").squeeze()
+            exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
 
         # Get voltage recording.
         # exc_voltages = exc_voltage_monitor.get("v")
@@ -252,11 +263,6 @@ for epoch in range(n_epochs):
 
         # Add to spikes recording.
         spike_record[step % update_interval] = spikes["Y"].get("s").squeeze()
-
-        # TODO
-        # print("TESSSSSSSSSSSSSSSSSSSSSSSST")
-        # print(spikes["Y"].get("s"))
-        # print(len(spikes["Y"].get("s")))
 
         # Optionally plot various simulation information.
         if plot:
@@ -273,7 +279,7 @@ for epoch in range(n_epochs):
             inpt_axes, inpt_ims = plot_input(
                 image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
             )
-            # spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
+            spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
             weights_im = plot_weights(square_weights, im=weights_im)
             # assigns_im = plot_assignments(square_assignments, im=assigns_im)
             # perf_ax = plot_performance(accuracy, ax=perf_ax)
