@@ -99,10 +99,9 @@ class HaoAndHuang2019(Network):
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            theta_plus=theta_plus, #TODO
-            # theta_plus=0.07, #TODO
+            # theta_plus=theta_plus, #TODO
+            theta_plus=0.07, #TODO
             tc_theta_decay=tc_theta_decay,
-            lbound=-100.0,
         )
 
         output_layer = HaoSLNodes(

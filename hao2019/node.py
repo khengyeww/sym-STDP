@@ -29,7 +29,7 @@ class HaoExcNodes(Nodes):
         tc_decay: Union[float, torch.Tensor] = 100.0,
         theta_plus: Union[float, torch.Tensor] = 0.05,
         tc_theta_decay: Union[float, torch.Tensor] = 2e7,
-        lbound: float = None,
+        lbound: float = -100.0,
         **kwargs,
     ) -> None:
         # language=rst
@@ -100,10 +100,10 @@ class HaoExcNodes(Nodes):
         """
         # Decay voltages and adaptive thresholds.
         self.v = self.decay * (self.v - self.rest) + self.rest
-        if self.learning:
+        # if self.learning:
         old_theta = self.theta
-        print("old_theta")
-        print(old_theta)
+        # print("old_theta")
+        # print(old_theta)
         self.theta *= self.theta_decay
 
         # Integrate inputs.
@@ -120,15 +120,15 @@ class HaoExcNodes(Nodes):
         # Refractoriness, voltage reset, and adaptive thresholds.
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
-        #if self.learning:
+        # #if self.learning:
         # TODO
-        print("CHJEKKKKKKKKKKKKKKKKKKKKKKASDKKKKKKKKKKKKKK")
-        print(self.s.float().sum(0))
+        # # print("CHJEKKKKKKKKKKKKKKKKKKKKKKASDKKKKKKKKKKKKKK")
+        # # print(self.s.float().sum(0))
         self.theta += (20 / (2 * old_theta - 20).abs()) * self.theta_plus * self.s.float().sum(0)
-        self.theta += self.theta_plus * self.s.float().sum(0)
+        # # self.theta += self.theta_plus * self.s.float().sum(0)
         # TODO
-        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-        print(self.theta)
+        # # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        # # print(self.theta)
 
         # voltage clipping to lowerbound
         if self.lbound is not None:
@@ -173,7 +173,8 @@ class HaoExcNodes(Nodes):
 class HaoSLNodes(Nodes):
     # language=rst
     """
-    Layer of supervised learning (SL) neurons adapted from Hao & Huang's paper.
+    Layer of supervised learning / supervision layer (SL) neurons
+    adapted from Hao & Huang's paper.
     """
 
     def __init__(
@@ -244,15 +245,8 @@ class HaoSLNodes(Nodes):
             # Integrate inputs.
             self.v += x
 
-            # Check for spiking neurons.
-            self.s = self.v >= self.thresh
-
-            # Voltage reset.
-            self.reset_state_variables
-        else:
-            # Set voltage to rest.
-            self.r = self.v > self.rest
-            self.v.masked_fill_(self.r, self.rest)
+        # Check for spiking neurons.
+        self.s = self.v >= self.thresh
 
         super().forward(x)
 

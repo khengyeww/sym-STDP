@@ -176,10 +176,11 @@ for epoch in range(n_epochs):
         # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
         if train:
             sl_label = torch.zeros(n_outpt).byte()
-            sl_label[batch["label"]] = 1.0
+            sl_label[batch["label"]] = True
             sl_spike = sl_poisson(datum=sl_label, time=time, dt=dt)
-            
+
             clamp = {"Z": sl_spike}
+
         if gpu:
             inputs = {k: v.cuda() for k, v in inputs.items()}
             clamp = {k: v.cuda() for k, v in clamp.items()}
@@ -243,18 +244,36 @@ for epoch in range(n_epochs):
         # Run the network on the input.
         network.run(inputs=inputs, time=time, input_time_dim=1, clamp=clamp)
 
+        # # torch.set_printoptions(profile="full")
+        # # print("checkpoi1")
+        # # y_spike = spikes["Y"].get("s").squeeze()
+        # # for timest, neuron in enumerate(y_spike):
+        # #     if neuron.sum() > 0:
+        # #         print(timest)
+        # #         print(neuron)
+        # # print(y_spike.sum())
+        # # print("checkpoi2")
+        # # z_spike = spikes["Z"].get("s")
+        # # for timest, neuron in enumerate(z_spike):
+        # #     if neuron.sum() > 0:
+        # #         print(timest)
+        # #         print(batch["label"])
+        # #         print(neuron)
+        # # print(z_spike.sum())
+
         # Re-present the input sample with increased firing rate
         # if excitatory neurons fire less than five spikes.
         exc_spike = spikes["Y"].get("s").squeeze()
-        exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
+        exc_spike_count = exc_spike.sum()
+        # Alternative way:
+        #exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
         while exc_spike_count < 5:
             network.reset_state_variables()
             #TODO increase firing rate?
             print("MOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOFO")
             network.run(inputs=inputs, time=time, input_time_dim=1, clamp=clamp)
 
-            exc_spike = spikes["Y"].get("s").squeeze()
-            exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
+            exc_spike_count = spikes["Y"].get("s").squeeze().sum()
 
         # Get voltage recording.
         # exc_voltages = exc_voltage_monitor.get("v")
