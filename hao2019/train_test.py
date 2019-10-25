@@ -36,7 +36,7 @@ def test_network(
 
     # Create a dataloader to iterate and batch data.
     dataloader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=1, shuffle=True, num_workers=n_workers, pin_memory=gpu
+        dataset, batch_size=1, shuffle=True, num_workers=n_workers, pin_memory=gpu
     )
 
     # Change learning mode of each layer's nodes to false.
@@ -47,7 +47,7 @@ def test_network(
     accuracy = []
 
     for step, batch in enumerate(tqdm(dataloader)):
-        # Update network accuracy at every interval.
+        # Calculate network accuracy at every update interval.
         if step % update_interval == 0 and step > 0:
             # Convert the array of labels into a tensor
             label_tensor = torch.tensor(labels)
