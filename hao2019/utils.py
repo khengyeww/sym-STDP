@@ -55,7 +55,7 @@ def load_data(
         #raise NameError("name {} is not defined".format(data_name))
 
 
-def get_network_const(n_neurons: int, default_value) -> float:
+def get_network_const(n_neurons: int, default_value: []) -> float:
     """
     Set time constant of threshold potential decay & decay factor
     for different sized network.
