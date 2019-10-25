@@ -12,7 +12,7 @@ from bindsnet.network.topology import (
 class DA_STDP(LearningRule):
     # language=rst
     """
-    Simple STDP rule involving both pre- and post-synaptic spiking activity.
+    Symmetric STDP rule involving both pre- and post-synaptic spiking activity.
     Both pre- and post-synpatic update are positive.
     """
 

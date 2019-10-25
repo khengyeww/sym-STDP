@@ -6,12 +6,18 @@ from torchvision import transforms
 from bindsnet.datasets import *
 
 
-def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> torch.utils.data.Dataset:
+def load_data(
+    dataset_name: str,
+    encoder: torch.Tensor = None,
+    train: bool = True,
+    intensity: float = 128,
+) -> torch.utils.data.Dataset:
     """
     Load dataset of choice.
 
     :param dataset_name: Name of dataset.
     :param encoder: Spike encoder for generating spike trains.
+    :param train: True for train data, False for test data.
     :param intensity: Intensity for transformation of data.
     :return: Return dataset.
     """
@@ -23,6 +29,7 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
                 encoder,
                 None,
                 root=os.path.join("..", "data", dataset_name),
+                train=train,
                 download=True,
                 transform=transforms.Compose(
                     [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]
@@ -34,6 +41,7 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
                 encoder,
                 None,
                 root=os.path.join("..", "data", dataset_name),
+                train=train,
                 download=True,
                 transform=transforms.Compose(
                     [transforms.ToTensor(), transforms.Lambda(lambda x: x * intensity)]
@@ -41,19 +49,20 @@ def load_data(dataset_name: str, encoder: torch.Tensor, intensity: float) -> tor
             )
 
         return dataset
-    
+
     except:
         raise NameError("Name %s is not defined" %data_name)
         #raise NameError("name {} is not defined".format(data_name))
 
 
-def get_network_const(n_neurons, default_value) -> float:
+def get_network_const(n_neurons: int, default_value) -> float:
     """
     Set time constant of threshold potential decay & decay factor
     for different sized network.
 
     :param n_neurons: Number of excitatory, inhibitory neurons.
-    :param default_value: Default value of constant tc_theta_decay, theta_plus.
+    :param default_value: Array of default value for
+        constant tc_theta_decay, theta_plus.
     :return: Return constant tc_theta_decay, theta_plus.
     """
     # Num. of neurons : (theta time constant, alpha decay factor)
@@ -69,13 +78,13 @@ def get_network_const(n_neurons, default_value) -> float:
     return const[0], const[1]
 
 
-def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -> torch.Tensor:
+def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0) -> torch.Tensor:
     # language=rst
     """
-    Generates Poisson-distributed spike trains based on input intensity. Inputs must be
-    non-negative, and give the firing rate in Hz. Inter-spike intervals (ISIs) for
-    non-negative data incremented by one to avoid zero intervals while maintaining ISI
-    distributions.
+    Generates Poisson-distributed spike trains for SL neurons according to
+    one-hot encoding scheme. Inputs must be non-negative, and give the
+    firing rate in Hz. Inter-spike intervals (ISIs) for non-negative data
+    incremented by one to avoid zero intervals while maintaining ISI distributions.
 
     :param datum: Tensor of shape ``[n_1, ..., n_k]``.
     :param time: Length of Poisson spike train per input variable.
@@ -86,7 +95,7 @@ def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -> tor
 
     # Get shape and size of data.
     shape, size = datum.shape, datum.numel()
-    datum = datum.view(-1)
+    datum = datum.flatten()
     time = int(time / dt)
 
     # Set 200Hz of firing rate for one SL neuron based on label.
@@ -108,6 +117,26 @@ def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0, **kwargs) -> tor
     spikes[times, torch.arange(size)] = 1
     spikes = spikes[1:]
 
-    print(spikes)
-
     return spikes.view(time, *shape)
+
+
+def prediction(spikes: torch.Tensor) -> torch.Tensor:
+    # language=rst
+    """
+    Classify data with the label with highest spiking activity over all neurons
+    during testing mode.
+
+    :param spikes: Binary tensor of shape ``(n_samples, time, n_neurons)`` of 
+        a layer's spiking activity.
+    :return: Predictions tensor of shape ``(n_samples)`` resulting from
+        the classification scheme.
+    """
+    n_samples = spikes.size(0)
+
+    # Sum over time dimension (spike ordering doesn't matter).
+    spikes = spikes.sum(1)
+
+    # Predictions are arg-max of layer-wise firing rates.
+    predictions = torch.sort(spikes, dim=1, descending=True)[1][:, 0]
+
+    return predictions
