@@ -34,7 +34,7 @@ class HaoExcNodes(Nodes):
     ) -> None:
         # language=rst
         """
-        Instantiates a layer of Hao & Huang 2019 neurons.
+        Instantiates a layer of Hao & Huang(2019) excitatory neurons.
 
         :param n: The number of neurons in the layer.
         :param shape: The dimensionality of the layer.
@@ -100,11 +100,8 @@ class HaoExcNodes(Nodes):
         """
         # Decay voltages and adaptive thresholds.
         self.v = self.decay * (self.v - self.rest) + self.rest
-        # if self.learning:
-        old_theta = self.theta
-        # print("old_theta")
-        # print(old_theta)
-        self.theta *= self.theta_decay
+        if self.learning:
+            self.theta *= self.theta_decay
 
         # Integrate inputs.
         self.v += (self.refrac_count == 0).float() * x
@@ -120,15 +117,8 @@ class HaoExcNodes(Nodes):
         # Refractoriness, voltage reset, and adaptive thresholds.
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
-        # #if self.learning:
-        # TODO
-        # # print("CHJEKKKKKKKKKKKKKKKKKKKKKKASDKKKKKKKKKKKKKK")
-        # # print(self.s.float().sum(0))
-        self.theta += (20 / (2 * old_theta - 20).abs()) * self.theta_plus * self.s.float().sum(0)
-        # # self.theta += self.theta_plus * self.s.float().sum(0)
-        # TODO
-        # # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-        # # print(self.theta)
+        if self.learning:
+            self.theta += (10 / (self.theta - 10).abs()) * self.theta_plus * self.s.float().sum(0)
 
         # voltage clipping to lowerbound
         if self.lbound is not None:
@@ -194,7 +184,7 @@ class HaoSLNodes(Nodes):
     ) -> None:
         # language=rst
         """
-        Instantiates a layer of SL neurons.
+        Instantiates a layer of Hao & Huang(2019) SL neurons.
 
         :param n: The number of neurons in the layer.
         :param shape: The dimensionality of the layer.
@@ -238,7 +228,6 @@ class HaoSLNodes(Nodes):
         :param x: Inputs to the layer.
         """
         if not self.learning:
-            print("CHECKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK in node.py")
             # Decay voltages and adaptive thresholds.
             self.v = self.decay * (self.v - self.rest) + self.rest
 
@@ -256,7 +245,7 @@ class HaoSLNodes(Nodes):
         Resets relevant state variables.
         """
         super().reset_state_variables()
-        self.v.fill_(self.rest)  # Neuron voltages.
+        self.v.fill_(self.reset)  # Neuron voltages.
 
     def compute_decays(self, dt) -> None:
         # language=rst

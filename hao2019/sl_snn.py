@@ -49,7 +49,7 @@ parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=3)#250)
+parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--train", dest="train", action="store_true")
 parser.add_argument("--test", dest="train", action="store_false")
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -193,23 +193,23 @@ for epoch in range(n_epochs):
         # Run the network on the input.
         network.run(inputs=inputs, time=time, input_time_dim=1, clamp=clamp)
 
-        # # torch.set_printoptions(profile="full")
-        # # print("checkpoi1")
-        # # y_spike = spikes["Y"].get("s").squeeze()
-        # # for timest, neuron in enumerate(y_spike):
-        # #     if neuron.sum() > 0:
-        # #         print(timest)
-        # #         print(neuron)
-        # # print(y_spike.sum())
-        # # print("checkpoi2")
-        # # z_spike = spikes["Z"].get("s")
-        # # for timest, neuron in enumerate(z_spike):
-        # #     if neuron.sum() > 0:
-        # #         print(timest)
-        # #         print(batch["label"])
-        # #         print(neuron)
-        # # print(z_spike.sum())
-        
+        # torch.set_printoptions(profile="full")
+        # print("checkpoi1")
+        # y_spike = spikes["Y"].get("s").squeeze()
+        # for timest, neuron in enumerate(y_spike):
+        #     if neuron.sum() > 0:
+        #         print(timest)
+        #         print(neuron)
+        # print(y_spike.sum())
+        # print("checkpoi2")
+        # z_spike = spikes["Z"].get("s")
+        # for timest, neuron in enumerate(z_spike):
+        #     if neuron.sum() > 0:
+        #         print(timest)
+        #         print(batch["label"])
+        #         print(neuron)
+        # print(z_spike.sum())
+
         #TODO
         i = 0
         # Re-present the input sample with increased firing rate

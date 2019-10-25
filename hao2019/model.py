@@ -74,15 +74,18 @@ class HaoAndHuang2019(Network):
         self.n_neurons = n_neurons
         self.inh = inh
         self.dt = dt
-        
+
+        for a in range(10):
+            print(self.inh)
+
         # Set normalization constant.
         norm = norm_scale * n_inpt
 
         #theta_plus? alpha factor?
         theta_plus = 8.4e5 #TODO
-        
+
         default_value = (tc_theta_decay, theta_plus)
-        
+
         # Set constants based on network size.
         tc_theta_decay, theta_plus = get_network_const(self.n_neurons, default_value)
 
