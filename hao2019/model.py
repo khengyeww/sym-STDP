@@ -1,9 +1,6 @@
-from typing import Optional, Union, Tuple, List, Sequence, Iterable
+from typing import Optional, Union, Sequence, Iterable
 
-import numpy as np
 import torch
-from scipy.spatial.distance import euclidean
-from torch.nn.modules.utils import _pair
 
 from bindsnet.network import Network
 from bindsnet.network.nodes import Input
@@ -36,8 +33,8 @@ class HaoAndHuang2019(Network):
         out_wmin: Optional[float] = 0.0,
         out_wmax: Optional[float] = 8.0,
         norm_scale: float = 0.1,
-        theta_plus: float = 0.07,
-        tc_theta_decay: float = 2e7,
+        theta_plus: float = 0.05,
+        tc_theta_decay: float = 1e7,
         inpt_shape: Optional[Iterable[int]] = None,
     ) -> None:
         # language=rst
@@ -75,19 +72,13 @@ class HaoAndHuang2019(Network):
         self.inh = inh
         self.dt = dt
 
-        for a in range(10):
-            print(self.inh)
-
         # Set normalization constant.
         norm = norm_scale * n_inpt
 
-        #theta_plus? alpha factor?
-        theta_plus = 8.4e5 #TODO
-
-        default_value = (tc_theta_decay, theta_plus)
+        default_value = (theta_plus, tc_theta_decay)
 
         # Set constants based on network size.
-        tc_theta_decay, theta_plus = get_network_const(self.n_neurons, default_value)
+        theta_plus, tc_theta_decay = get_network_const(self.n_neurons, default_value)
 
         input_layer = Input(
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
@@ -102,8 +93,7 @@ class HaoAndHuang2019(Network):
             refrac=2,
             tc_decay=100.0,
             tc_trace=20.0,
-            # theta_plus=theta_plus, #TODO
-            theta_plus=0.07, #TODO
+            theta_plus=theta_plus,
             tc_theta_decay=tc_theta_decay,
         )
 
