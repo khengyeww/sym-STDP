@@ -1,3 +1,5 @@
+from typing import List
+
 import os
 import torch
 
@@ -51,27 +53,27 @@ def load_data(
         return dataset
 
     except:
-        raise NameError("Name %s is not defined" %data_name)
-        #raise NameError("name {} is not defined".format(data_name))
+        raise NameError("Name \"%s\" is not defined" % dataset_name)
+        #raise NameError("name \"{}\" is not defined".format(dataset_name))
 
 
-def get_network_const(n_neurons: int, default_value: []) -> float:
+def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     """
     Set time constant of threshold potential decay & decay factor
     for different sized network.
 
     :param n_neurons: Number of excitatory, inhibitory neurons.
     :param default_value: Array of default value for
-        constant tc_theta_decay, theta_plus.
-    :return: Return constant tc_theta_decay, theta_plus.
+        constant theta_plus, tc_theta_decay.
+    :return: Return constant theta_plus, tc_theta_decay.
     """
-    # Num. of neurons : (theta time constant, alpha decay factor)
+    # Num. of neurons : (theta plus, theta decay time constant)
     const_choices = {
-        100  : (6e6, 8.4e5),
-        400  : (6e6, 8.4e5),
-        1600 : (8e6, 1.12e6),
-        6400 : (2e7, 2e6),
-        10000: (2e7, 2e6),
+        100  : (0.07, 6e6),
+        400  : (0.07, 6e6),
+        1600 : (0.07, 8e6),
+        6400 : (0.05, 2e7),
+        10000: (0.05, 2e7),
     }
     const = const_choices.get(n_neurons, default_value)
 
@@ -123,7 +125,7 @@ def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0) -> torch.Tensor:
 def prediction(spikes: torch.Tensor) -> torch.Tensor:
     # language=rst
     """
-    Classify data with the label with highest spiking activity over all neurons
+    Classify data with the label with highest spiking activity over SL neurons
     during testing mode.
 
     :param spikes: Binary tensor of shape ``(n_samples, time, n_neurons)`` of 
