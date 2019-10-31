@@ -5,7 +5,32 @@ import torch
 
 from torchvision import transforms
 
+from textwrap import wrap
+
 from bindsnet.datasets import *
+
+
+def msg_wrapper(msg: List[str], style: int) -> None:
+    """
+    Wrap the message with a border.
+
+    :param msg: List of messages.
+    :param style: Pick the style of the border.
+    """
+    width = max([len(sentence) for sentence in msg])
+
+    if style == 1:
+        print('\n' + '#' * width)
+        for sentence in msg:
+            for line in wrap(sentence, width):
+                print('{0:^{1}}'.format(line, width))
+        print('#' * width + '\n')
+    elif style == 2:
+        print('+-' + '-' * width + '-+')
+        for sentence in msg:
+            for line in wrap(sentence, width):
+                print('| {0:^{1}} |'.format(line, width))
+        print('+-' + '-'*(width) + '-+' + '\n')
 
 
 def load_data(
@@ -23,6 +48,9 @@ def load_data(
     :param intensity: Intensity for transformation of data.
     :return: Return dataset.
     """
+    ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+    DATA_PATH = os.path.join(ROOT_PATH, "..", "data", dataset_name)
+
     try:
 
         if dataset_name == "MNIST":
@@ -30,7 +58,7 @@ def load_data(
             dataset = MNIST(
                 encoder,
                 None,
-                root=os.path.join("..", "data", dataset_name),
+                root=DATA_PATH,
                 train=train,
                 download=True,
                 transform=transforms.Compose(
@@ -42,7 +70,7 @@ def load_data(
             dataset = FashionMNIST(
                 encoder,
                 None,
-                root=os.path.join("..", "data", dataset_name),
+                root=DATA_PATH,
                 train=train,
                 download=True,
                 transform=transforms.Compose(
@@ -55,6 +83,19 @@ def load_data(
     except:
         raise NameError("Name \"%s\" is not defined" % dataset_name)
         #raise NameError("name \"{}\" is not defined".format(dataset_name))
+
+
+def make_dirs(paths: List[str]) -> None:
+    """
+    Setup directories within path.
+
+    :param paths: List of paths.
+    """
+    for path in paths:
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        # Alternative way:
+        # os.makedirs(path, exist_ok=True)
 
 
 def get_network_const(n_neurons: int, default_value: List[float]) -> float:
@@ -102,7 +143,7 @@ def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0) -> torch.Tensor:
 
     # Set 200Hz of firing rate for one SL neuron based on label.
     rate = torch.zeros(size)
-    rate[datum != 0] = 200
+    rate[datum != 0] = 1 / datum[datum != 0] * (1000 / dt)
 
     # Create Poisson distribution and sample inter-spike intervals
     # (incrementing by 1 to avoid zero intervals).
@@ -118,6 +159,8 @@ def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0) -> torch.Tensor:
     spikes = torch.zeros(time + 1, size).byte()
     spikes[times, torch.arange(size)] = 1
     spikes = spikes[1:]
+
+    # print("spikes in utils!!!!!!!!!!!!!!!!!")
 
     return spikes.view(time, *shape)
 
