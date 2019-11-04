@@ -116,10 +116,6 @@ class Spiking:
         self.spikes = spikes
         self.voltages = voltages
 
-    def tryplot(self) -> None:
-        wei = self.network.connections[("X", "Y")].w
-        self.plotf.plot_weight_maps(wei)
-
     def train_network(self, n_samples: int = None, shuffle: bool = False) -> None:
         """
         Train the spiking neural network.
@@ -163,8 +159,7 @@ class Spiking:
 
             # Calculate number of spikes from excitatory neurons.            
             exc_spike = self.spikes["Y"].get("s").squeeze()
-            # exc_spike_count = exc_spike.sum()
-            exc_spike_count = 3
+            exc_spike_count = exc_spike.sum()
             # Alternative way:
             # exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
 
@@ -184,6 +179,9 @@ class Spiking:
                 new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
 
                 inputs = {"X": new_encoded_image.view(self.timestep, 1, 1, 28, 28)}
+                if self.gpu:
+                    inputs = {k: v.cuda() for k, v in inputs.items()}
+
                 network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
                 exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
@@ -229,10 +227,6 @@ class Spiking:
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
 
-        # Default to use all input samples.
-        if n_samples is None:
-            n_samples = len(dataloader)
-
         network = self.network
 
         # Change training mode of network to False.
@@ -243,11 +237,6 @@ class Spiking:
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
-            # Stop if reached number of samples specified.
-            if n_samples is not None and step == n_samples:
-                progress.close()
-                break
-
             # Calculate network accuracy at every update interval.
             if step % self.update_interval == 0 and step > 0:
                 tmp_acc = 100 * correct_pred / step
@@ -264,7 +253,6 @@ class Spiking:
 
             # Get next input sample.
             inputs = {"X": batch["encoded_image"].view(self.timestep, 1, 1, 28, 28)}
-
             if self.gpu:
                 inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -279,7 +267,7 @@ class Spiking:
 
             network.reset_state_variables()  # Reset state variables.
 
-        acc = 100 * correct_pred / n_samples
+        acc = 100 * correct_pred / len(dataloader)
         if data_mode == "Train" or data_mode == "Validation":
             self.acc_history['train_acc'].append(acc)
         elif data_mode == "Test":
@@ -307,6 +295,10 @@ class Spiking:
         )
 
         return dataloader
+
+    def tryplot(self) -> None:
+        wei = self.network.connections[("X", "Y")].w
+        self.plotf.plot_weight_maps(wei)
 
     def predict(
         self,
