@@ -16,7 +16,7 @@ class HaoAndHuang2019(Network):
     """
     Implements the spiking neural network architecture from `(Hao & Huang 2019)
     <https://www.sciencedirect.com/science/article/pii/S0893608019302680>`_.
-    which is based on DiehlAndCook2015v2 network.
+    which is based on DiehlAndCook2015v2 network provided by BindsNET.
     """
 
     def __init__(

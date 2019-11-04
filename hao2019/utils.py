@@ -25,7 +25,7 @@ def msg_wrapper(msg: List[str], style: int) -> None:
                 print('{0:^{1}}'.format(line, width))
         print('#' * width + '\n')
     elif style == 2:
-        print('+-' + '-' * width + '-+')
+        print('\n+-' + '-' * width + '-+')
         for sentence in msg:
             for line in wrap(sentence, width):
                 print('| {0:^{1}} |'.format(line, width))
