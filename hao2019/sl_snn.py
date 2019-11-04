@@ -29,7 +29,6 @@ parser.add_argument("--norm_scale", type=float, default=0.1)
 parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
-parser.add_argument("--intensity", type=float, default=128)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--plot", dest="plot", action="store_true")
@@ -50,7 +49,6 @@ norm_scale = args.norm_scale
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
-intensity = args.intensity
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 plot = args.plot
@@ -86,11 +84,12 @@ snn = Spiking(
     n_workers=n_workers,
     time=time,
     dt=dt,
-    intensity=intensity,
     update_interval=update_interval,
     plot=plot,
     gpu=gpu,
 )
+
+# ------------------------------------------------------------------------------- #
 
 """
     ### Training Session ###
@@ -105,8 +104,10 @@ for epoch in range(n_epochs):
         print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
         start = t()
 
-    # Decide number of samples to use. Default to all samples.
+    # Decide number of samples to use for training.
+    # Default to all samples.
     snn.train_network(n_train)
+
 # snn.tryplot()
 print("Progress: %d / %d (%.4f minutes)" % (epoch + 1, n_epochs, ((t() - start) / 60)))
 print("Training complete.\n")
@@ -121,18 +122,19 @@ msg = ["### Begin testing. ###"]
 msg_wrapper(msg, 1)
 start = t()
 
-# Decide number of samples to use. Default to all samples.
-snn.test_network(n_test)
+# Decide number of samples & dataset to use for testing.
+# Default to all samples & test mode.
+snn.test_network(n_test, data_mode='test')
 
 print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 
 # ------------------------------------------------------------------------------- #
 
 # Print final train & test accuracy.
-msg = snn.show_acc()
-msg_wrapper(msg, 2)
+snn.show_acc()
 
 # Save network & results.
+print("Saving network & results... ...\n")
 snn.save_results()
-snn.save_wrong_pred()
-print("Saving network & results... ... ...done!\n")
+snn.save_pred()
+print(" ... ...done!\n")
