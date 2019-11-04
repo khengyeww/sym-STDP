@@ -4,7 +4,6 @@ import os
 import torch
 
 from torchvision import transforms
-
 from textwrap import wrap
 
 from bindsnet.datasets import *
@@ -85,17 +84,37 @@ def load_data(
         #raise NameError("name \"{}\" is not defined".format(dataset_name))
 
 
-def make_dirs(paths: List[str]) -> None:
+def make_dirs(path: str) -> None:
     """
     Setup directories within path.
 
-    :param paths: List of paths.
+    :param path: Name of path.
     """
-    for path in paths:
-        if not os.path.isdir(path):
-            os.makedirs(path)
-        # Alternative way:
-        # os.makedirs(path, exist_ok=True)
+    os.makedirs(path, exist_ok=True)
+    # Alternative way:
+    # if not os.path.isdir(path):
+    #     os.makedirs(path)
+
+
+def transform_image(
+    image: torch.Tensor, intensity_scale: int, old_intensity: float
+) -> torch.Tensor:
+    """
+    Transform image pixel intensity (which equals to firing rates).
+
+    :param image: Tensor of shape ``[batch_size, *input_shape]``
+        of the original image's pixel intensity.
+    :param intensity_scale: Scale for increasing the pixel intensity.
+    :param old_intensity: Maximum pixel intensity of the original image.
+    :return: Tensor of shape ``[batch_size, *input_shape]`` of transformed image.
+    """
+    intensity = 256.0 / 8.0 * intensity_scale
+    transform = transforms.Compose(
+        [transforms.Lambda(lambda x: x * intensity / old_intensity)]
+    )
+    new_image = transform(image)
+
+    return new_image
 
 
 def get_network_const(n_neurons: int, default_value: List[float]) -> float:
@@ -119,69 +138,3 @@ def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     const = const_choices.get(n_neurons, default_value)
 
     return const[0], const[1]
-
-
-def sl_poisson(datum: torch.Tensor, time: int, dt: float = 1.0) -> torch.Tensor:
-    # language=rst
-    """
-    Generates Poisson-distributed spike trains for SL neurons according to
-    one-hot encoding scheme. Inputs must be non-negative, and give the
-    firing rate in Hz. Inter-spike intervals (ISIs) for non-negative data
-    incremented by one to avoid zero intervals while maintaining ISI distributions.
-
-    :param datum: Tensor of shape ``[n_1, ..., n_k]``.
-    :param time: Length of Poisson spike train per input variable.
-    :param dt: Simulation time step.
-    :return: Tensor of shape ``[time, n_1, ..., n_k]`` of Poisson-distributed spikes.
-    """
-    assert (datum >= 0).all(), "Inputs must be non-negative"
-
-    # Get shape and size of data.
-    shape, size = datum.shape, datum.numel()
-    datum = datum.flatten()
-    time = int(time / dt)
-
-    # Set 200Hz of firing rate for one SL neuron based on label.
-    rate = torch.zeros(size)
-    rate[datum != 0] = 1 / datum[datum != 0] * (1000 / dt)
-
-    # Create Poisson distribution and sample inter-spike intervals
-    # (incrementing by 1 to avoid zero intervals).
-    dist = torch.distributions.Poisson(rate=rate)
-    intervals = dist.sample(sample_shape=torch.Size([time + 1]))
-    intervals[:, datum != 0] += (intervals[:, datum != 0] == 0).float()
-
-    # Calculate spike times by cumulatively summing over time dimension.
-    times = torch.cumsum(intervals, dim=0).long()
-    times[times >= time + 1] = 0
-
-    # Create tensor of spikes.
-    spikes = torch.zeros(time + 1, size).byte()
-    spikes[times, torch.arange(size)] = 1
-    spikes = spikes[1:]
-
-    # print("spikes in utils!!!!!!!!!!!!!!!!!")
-
-    return spikes.view(time, *shape)
-
-
-def prediction(spikes: torch.Tensor) -> torch.Tensor:
-    # language=rst
-    """
-    Classify data with the label with highest spiking activity over SL neurons
-    during testing mode.
-
-    :param spikes: Binary tensor of shape ``(n_samples, time, n_neurons)`` of 
-        a layer's spiking activity.
-    :return: Predictions tensor of shape ``(n_samples)`` resulting from
-        the classification scheme.
-    """
-    n_samples = spikes.size(0)
-
-    # Sum over time dimension (spike ordering doesn't matter).
-    spikes = spikes.sum(1)
-
-    # Predictions are arg-max of layer-wise firing rates.
-    predictions = torch.sort(spikes, dim=1, descending=True)[1][:, 0]
-
-    return predictions
