@@ -11,7 +11,7 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
-from plot_func import Plot
+from plot import Plot
 from utils import load_data, make_dirs, transform_image, msg_wrapper
 
 
