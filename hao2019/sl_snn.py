@@ -54,11 +54,17 @@ update_interval = args.update_interval
 plot = args.plot
 gpu = args.gpu
 
+n_epochs = 1
+n_neurons = 100
+n_train = 5
+n_test = 4
+
 # Setup pathnames for saving files.
-datetime = date.strftime("%Y%m%d-%H%M%S")
+datetime = date.strftime("%Y%m%d-%H%M%S_")
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-DIR_NAME = dataset_name.lower() + '-' + str(n_neurons) + '_' + datetime
-RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
+DIR_NAME = datetime + dataset_name.lower() + '-'
+DIR_NAME += str(n_neurons) + '_' + str(n_train) + '|' + str(n_test)
+RESULTS_PATH = os.path.join(ROOT_PATH, 'results')#, DIR_NAME)
 # paths = [RESULTS_PATH]
 # torch.set_printoptions(profile="full")
 
@@ -108,7 +114,6 @@ for epoch in range(n_epochs):
     # Default to all samples.
     snn.train_network(n_train)
 
-# snn.tryplot()
 print("Progress: %d / %d (%.4f minutes)" % (epoch + 1, n_epochs, ((t() - start) / 60)))
 print("Training complete.\n")
 
@@ -134,7 +139,9 @@ print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 snn.show_acc()
 
 # Save network & results.
-print("Saving network & results... ...\n")
+print("\nSaving network & results... ...\n")
 snn.save_results()
+snn.save_sl_spikes()
 snn.save_pred()
+snn.tryplot()
 print(" ... ...done!\n")

@@ -72,11 +72,18 @@ class Spiking:
         self.validation_dataset = None
         self.test_dataset = None
 
+        self.train_spike = []
+        self.test_spike = []
+
         self.right_pred = []
         self.wrong_pred = []
         self.acc_history = {'train_acc': [], 'test_acc': []}
 
         self.plotf = Plot()
+        self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
+        self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
+        self.exc_final_weight = None
+        self.sl_final_weight = None
 
         # Determines number of workers to use.
         if n_workers == -1:
@@ -142,6 +149,10 @@ class Spiking:
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
+            # if batch["label"] != 9:
+            #     # print(batch["label"])
+            #     continue
+
             # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
             sl_label = torch.zeros(self.n_outpt)
             sl_label[batch["label"]] = 200
@@ -189,7 +200,13 @@ class Spiking:
                 pass
                 # plot_every_step()
 
+            self.train_spike.append(batch["label"])
+            self.train_spike.append(self.spikes["Z"].get("s").squeeze().sum(0))
+
             network.reset_state_variables()  # Reset state variables.
+
+        self.exc_final_weight = network.connections[("X", "Y")].w.detach().clone()
+        self.sl_final_weight = network.connections[("Y", "Z")].w.detach().clone()
 
     def test_network(
         self, n_samples: int = None, data_mode: str = "test", shuffle: bool = True
@@ -237,6 +254,10 @@ class Spiking:
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
+            # if batch["label"] != 9:
+            #     # print(batch["label"])
+            #     continue
+
             # Calculate network accuracy at every update interval.
             if step % self.update_interval == 0 and step > 0:
                 tmp_acc = 100 * correct_pred / step
@@ -255,6 +276,7 @@ class Spiking:
             inputs = {"X": batch["encoded_image"].view(self.timestep, 1, 1, 28, 28)}
             if self.gpu:
                 inputs = {k: v.cuda() for k, v in inputs.items()}
+                batch["label"] = batch["label"].cuda()
 
             # Run the network on the input.
             network.run(inputs=inputs, time=self.time, input_time_dim=1)
@@ -264,6 +286,9 @@ class Spiking:
 
             # Compare ground truth label and prediction label.
             correct_pred = self.predict(batch["label"], spikes, correct_pred)
+
+            self.test_spike.append(batch["label"])
+            self.test_spike.append(spikes.sum(0))
 
             network.reset_state_variables()  # Reset state variables.
 
@@ -296,7 +321,7 @@ class Spiking:
 
         return dataloader
 
-    def tryplot(self) -> None:
+    def tryplotsss(self) -> None:
         wei = self.network.connections[("X", "Y")].w
         self.plotf.plot_weight_maps(wei)
 
@@ -355,6 +380,18 @@ class Spiking:
 
         msg_wrapper(msg, 2)
 
+    def save_sl_spikes(self) -> None:
+        """
+        Save spike results for checking purpose.
+        """
+        file_path = os.path.join(self.results_path, "train_spike.txt")
+        with open(file_path, 'w') as filehandle:
+            filehandle.writelines("%s\n" % line for line in self.train_spike)
+
+        file_path = os.path.join(self.results_path, "test_spike.txt")
+        with open(file_path, 'w') as filehandle:
+            filehandle.writelines("%s\n" % line for line in self.test_spike)
+
     def save_pred(self) -> None:
         """
         Save prediction results for checking purpose.
@@ -366,6 +403,27 @@ class Spiking:
         file_path = os.path.join(self.results_path, "wrong_pred.txt")
         with open(file_path, 'w') as filehandle:
             filehandle.writelines("%s\n" % line for line in self.wrong_pred)
+
+    def tryplot(self) -> None:
+        file_path = os.path.join(self.results_path, "init_exc.png")
+        self.plotf.plot_weight_maps(self.exc_init_weight, file_path=file_path)
+
+        file_path = os.path.join(self.results_path, "init_sl.png")
+        self.plotf.plot_weight_maps(
+            self.sl_init_weight, file_path=file_path,
+            fig_shape=(4, 3), re_shape=(10, 10),
+        )
+
+        # weight = self.network.connections[("X", "Y")].w.detach().clone()
+        file_path = os.path.join(self.results_path, "final_exc.png")
+        self.plotf.plot_weight_maps(self.exc_final_weight, file_path=file_path)
+
+        # weight = self.network.connections[("Y", "Z")].w.detach().clone()
+        file_path = os.path.join(self.results_path, "final_sl.png")
+        self.plotf.plot_weight_maps(
+            self.sl_final_weight, file_path=file_path,
+            fig_shape=(4, 3), re_shape=(10, 10),
+        )
 
     def save_results(self) -> None:
         """
