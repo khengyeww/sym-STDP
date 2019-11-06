@@ -76,4 +76,4 @@ class DA_STDP(LearningRule):
             update = self.reduction(torch.bmm(source_x, target_s), dim=0)
             self.connection.w += self.nu[1] * update
 
-        super().update()        
+        super().update()

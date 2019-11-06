@@ -236,6 +236,9 @@ class HaoSLNodes(Nodes):
         # Check for spiking neurons.
         self.s = self.v >= self.thresh
 
+        # Voltage reset.
+        self.v.masked_fill_(self.s, self.reset)
+
         super().forward(x)
 
     def reset_state_variables(self) -> None:
@@ -244,7 +247,7 @@ class HaoSLNodes(Nodes):
         Resets relevant state variables.
         """
         super().reset_state_variables()
-        self.v.fill_(self.reset)  # Neuron voltages.
+        self.v.fill_(self.rest)  # Neuron voltages.
 
     def compute_decays(self, dt) -> None:
         # language=rst
