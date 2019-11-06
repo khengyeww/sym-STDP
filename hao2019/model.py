@@ -72,9 +72,7 @@ class HaoAndHuang2019(Network):
         self.inh = inh
         self.dt = dt
 
-        # Set normalization constant.
-        norm = norm_scale * n_inpt
-
+        # Set default value.
         default_value = (theta_plus, tc_theta_decay)
 
         # Set constants based on network size.
@@ -108,6 +106,8 @@ class HaoAndHuang2019(Network):
         )
 
         w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
+        norm = norm_scale * self.n_inpt  # Set normalization constant.
+        # nu = get_lrate(self.n_neurons)  # Get input -> exc layer learning rate.
         input_connection = Connection(
             source=input_layer,
             target=hidden_layer,
@@ -133,6 +133,8 @@ class HaoAndHuang2019(Network):
         )
 
         w = 0.3 * torch.rand(self.n_neurons, self.n_outpt)
+        norm = norm_scale * self.n_neurons * out_wmax  # Set normalization constant.
+        # nu = get_lrate(self.n_neurons)  # Get exc -> SL layer learning rate.
         output_connection = Connection(
             source=hidden_layer,
             target=output_layer,
