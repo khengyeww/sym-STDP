@@ -72,13 +72,17 @@ class Spiking:
         self.validation_dataset = None
         self.test_dataset = None
 
+        # Store results for checking purpose.
         self.train_spike = []
         self.test_spike = []
-
         self.right_pred = []
         self.wrong_pred = []
-        self.acc_history = {'train_acc': [], 'test_acc': []}
 
+        # Store network accuracy.
+        self.acc_history = {'train_acc': [], 'test_acc': []}
+        self.show_acc_msg = []
+
+        # Initialize plot class.
         self.plotf = Plot()
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
         self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
@@ -209,7 +213,7 @@ class Spiking:
         self.sl_final_weight = network.connections[("Y", "Z")].w.detach().clone()
 
     def test_network(
-        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = True
+        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = False
     ) -> None:
         """
         Test the spiking neural network.
@@ -287,9 +291,6 @@ class Spiking:
             # Compare ground truth label and prediction label.
             correct_pred = self.predict(batch["label"], spikes, correct_pred)
 
-            self.test_spike.append(batch["label"])
-            self.test_spike.append(spikes.sum(0))
-
             network.reset_state_variables()  # Reset state variables.
 
         acc = 100 * correct_pred / len(dataloader)
@@ -321,10 +322,6 @@ class Spiking:
 
         return dataloader
 
-    def tryplotsss(self) -> None:
-        wei = self.network.connections[("X", "Y")].w
-        self.plotf.plot_weight_maps(wei)
-
     def predict(
         self,
         label: torch.Tensor,
@@ -352,6 +349,10 @@ class Spiking:
         # Save "label" vs "prediction" for checking purpose.
         msg = "Ground truth: {}, Predict: {}".format(label, prediction)
 
+        self.test_spike.append(msg)
+        self.test_spike.append(n_spikes)
+        self.test_spike.append('')
+
         if label != prediction:
             self.wrong_pred.append(msg)
         else:
@@ -364,7 +365,6 @@ class Spiking:
         """
         Show final accuracy of the network.
         """
-        msg = []
         train_acc = test_acc = "N/A"
 
         if len(self.acc_history['train_acc']) != 0:
@@ -375,62 +375,76 @@ class Spiking:
         train_msg = "Network train accuracy: " + train_acc
         test_msg = "Network test accuracy: " + test_acc
 
-        msg.append(train_msg)
-        msg.append(test_msg)
+        self.show_acc_msg.append(train_msg)
+        self.show_acc_msg.append(test_msg)
 
-        msg_wrapper(msg, 2)
+        msg_wrapper(self.show_acc_msg, 2)
 
-    def save_sl_spikes(self) -> None:
+    def write_file(self, content: List[str], file_name: str) -> None:
+        """
+        Save / write to file.
+
+        :param content: Content to write to the file.
+        :param file_name: Filename to use when saving.
+        """
+        file_path = os.path.join(self.results_path, file_name)
+        with open(file_path, 'w') as filehandle:
+            filehandle.writelines("%s\n" % line for line in content)
+
+    def save_spike(self) -> None:
         """
         Save spike results for checking purpose.
         """
-        file_path = os.path.join(self.results_path, "train_spike.txt")
-        with open(file_path, 'w') as filehandle:
-            filehandle.writelines("%s\n" % line for line in self.train_spike)
-
-        file_path = os.path.join(self.results_path, "test_spike.txt")
-        with open(file_path, 'w') as filehandle:
-            filehandle.writelines("%s\n" % line for line in self.test_spike)
+        # self.write_file(self.train_spike, "train_spike.txt")
+        self.write_file(self.test_spike, "test_spike.txt")
 
     def save_pred(self) -> None:
         """
         Save prediction results for checking purpose.
         """
-        file_path = os.path.join(self.results_path, "right_pred.txt")
-        with open(file_path, 'w') as filehandle:
-            filehandle.writelines("%s\n" % line for line in self.right_pred)
+        self.write_file(self.right_pred, "right_pred.txt")
+        self.write_file(self.wrong_pred, "wrong_pred.txt")
 
-        file_path = os.path.join(self.results_path, "wrong_pred.txt")
-        with open(file_path, 'w') as filehandle:
-            filehandle.writelines("%s\n" % line for line in self.wrong_pred)
+    def save_plot(self, save_extension: str = 'png') -> None:
+        """
+        Save plots of neurons' initial weights and trained weights.
 
-    def tryplot(self) -> None:
-        file_path = os.path.join(self.results_path, "init_exc.png")
+        :param save_extension: Filename extension for saving plot.
+        """
+        file_name = "init_exc." + save_extension
+        file_path = os.path.join(self.results_path, file_name)
         self.plotf.plot_weight_maps(self.exc_init_weight, file_path=file_path)
 
-        file_path = os.path.join(self.results_path, "init_sl.png")
-        self.plotf.plot_weight_maps(
-            self.sl_init_weight, file_path=file_path,
-            fig_shape=(4, 3), re_shape=(10, 10),
-        )
-
-        # weight = self.network.connections[("X", "Y")].w.detach().clone()
-        file_path = os.path.join(self.results_path, "final_exc.png")
+        file_name = "final_exc." + save_extension
+        file_path = os.path.join(self.results_path, file_name)
         self.plotf.plot_weight_maps(self.exc_final_weight, file_path=file_path)
 
-        # weight = self.network.connections[("Y", "Z")].w.detach().clone()
-        file_path = os.path.join(self.results_path, "final_sl.png")
+        file_name = "init_sl." + save_extension
+        file_path = os.path.join(self.results_path, file_name)
         self.plotf.plot_weight_maps(
-            self.sl_final_weight, file_path=file_path,
-            fig_shape=(4, 3), re_shape=(10, 10),
+            self.sl_init_weight,
+            fig_shape=(4, 3),
+            c_max=8.0,
+            file_path=file_path,
         )
 
-    def save_results(self) -> None:
+        file_name = "final_sl." + save_extension
+        file_path = os.path.join(self.results_path, file_name)
+        self.plotf.plot_weight_maps(
+            self.sl_final_weight,
+            fig_shape=(4, 3),
+            c_max=8.0,
+            file_path=file_path,
+        )
+
+    def save_result(self) -> None:
         """
-        Save trained network & plots of weight map.
+        Save trained network & accuracy results.
         """
         # Save trained network.
         self.network.save(self.results_path + '/test_1_trained_network.pt')
+
+        self.write_file(self.show_acc_msg, "results.txt")
 
         # Save plots.
 
