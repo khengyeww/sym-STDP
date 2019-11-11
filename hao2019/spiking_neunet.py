@@ -83,7 +83,7 @@ class Spiking:
         self.show_acc_msg = []
 
         # Initialize plot class.
-        self.plotf = Plot()
+        self.visualize = Plot()
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
         self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
         self.exc_final_weight = None
@@ -413,15 +413,15 @@ class Spiking:
         """
         file_name = "init_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.plotf.plot_weight_maps(self.exc_init_weight, file_path=file_path)
+        self.visualize.plot_weight_maps(self.exc_init_weight, file_path=file_path)
 
         file_name = "final_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.plotf.plot_weight_maps(self.exc_final_weight, file_path=file_path)
+        self.visualize.plot_weight_maps(self.exc_final_weight, file_path=file_path)
 
         file_name = "init_sl." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.plotf.plot_weight_maps(
+        self.visualize.plot_weight_maps(
             self.sl_init_weight,
             fig_shape=(4, 3),
             c_max=8.0,
@@ -430,7 +430,7 @@ class Spiking:
 
         file_name = "final_sl." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.plotf.plot_weight_maps(
+        self.visualize.plot_weight_maps(
             self.sl_final_weight,
             fig_shape=(4, 3),
             c_max=8.0,

@@ -1,8 +1,10 @@
+from typing import Tuple
+
+import uuid
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
-
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from bindsnet.utils import get_square_weights, get_square_assignments
 from bindsnet.analysis.plotting import (
@@ -17,7 +19,7 @@ from bindsnet.analysis.plotting import (
 
 class Plot:
     """
-    Class for plot functions.
+    Class for visualization by plot functions.
     """
 
     inpt_ims, inpt_axes = None, None
@@ -52,11 +54,13 @@ class Plot:
         spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
         voltages_ = {"Y": y_voltages}
 
+        """ New version.
         # image = batch["image"][:, 0].view(28, 28)
         # inpt = inputs["X"][:, 0].view(time, 784).sum(0).view(28, 28)
         # spikes_ = {
         #         layer: spikes[layer].get("s")[:, 0].contiguous() for layer in spikes
         # }
+        """
 
         # inpt_axes, inpt_ims = plot_input(
         #     image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
@@ -86,45 +90,65 @@ class Plot:
         self.training_progress_images.append(data)
 
     def plot_weight_maps(
-        self, weight,#: torch.Tensor,
-        file_path: str, fig_shape: tuple = (3, 3), re_shape: tuple = (28, 28),
-        dpi: int = DPI, c_max: float = 1.0, c_min: float = 0.0):
+        self,
+        weights: torch.Tensor,
+        fig_shape: Tuple[int, int] = (3, 3),
+        c_min: float = 0.0,
+        c_max: float = 1.0,
+        dpi: int = DPI,
+        file_path: str = str(uuid.uuid4()),
+    ) -> None:
         """
-        Plot weight maps of output connection with the shape of [f_shape].
-        :param f_shape:
-        :param file_name:
-        :param dpi:
-        :param c_max:
-        :param c_min:
-        :param save:
-        :return:
+        Plot weight maps of a layer's neurons with the shape of [fig_shape].
+
+        :param weights: Weight matrix of ``Connection`` object.
+        :param fig_shape: Horizontal, vertical figure shape for plot.
+        :param c_min: Lower bound of the range that the colormap covers.
+        :param c_max: Upper bound of the range that the colormap covers.
+        :param dpi: Output resolution to use when saving image.
+        :param file_path: File path (contains filename) to use when saving.
         """
         # Turn the interactive mode off.
         plt.ioff()
 
-        n_pre_neu = len(weight)
+        # Number of neurons from front layer.
+        n_pre_neu = len(weights)
 
-        # Convert to N-dimensional array (ndarray) and transpose it.
-        weight = weight.cpu().numpy().T
-        # weight = weight.detach().clone().cpu().numpy().T
-        n_post_neu = len(weight)
+        # Calculate the perfect square which is closest to the number of neurons.
+        size = int(np.sqrt(n_pre_neu))
+        # max_size = 30
+        # if restrict and size > max_size:
+        #     size = max_size
+        sq_size = size ** 2
+        sq_shape = (size, size)
+
+        # Convert torch Tensor to numpy Array and transpose it.
+        weights = weights.cpu().numpy().T
+        # weights = weights.detach().clone().cpu().numpy().T
+
+        # Number of neurons from current layer.
+        n_post_neu = len(weights)
 
         # Create figure of shape (m, n).
         fig, axes = plt.subplots(ncols=fig_shape[0], nrows=fig_shape[1])
         fig.subplots_adjust(right=0.8, hspace=0.28)
 
         index = 0
-        # im = None
         for cols in axes:
             for ax in cols:
                 if index >= n_post_neu:
                     ax.axis('off')
                     continue
 
-                # Reshape to (28, 28).
-                tmp_weight = weight[index].reshape(re_shape)
+                # Slice the array of weight map to fit perfect square's shape.
+                if len(weights[index]) > sq_size:
+                    tmp_weights = weights[index][:sq_size]
+                else:
+                    tmp_weights = weights[index]
 
-                im = ax.imshow(tmp_weight, cmap='BuPu', vmax=c_max, vmin=c_min)
+                tmp_weights = tmp_weights.reshape(sq_shape)
+
+                im = ax.imshow(tmp_weights, cmap='BuPu', vmin=c_min, vmax=c_max)
                 ax.set_title('Map ({})'.format(index))
                 ax.tick_params(
                     labelbottom=False,
