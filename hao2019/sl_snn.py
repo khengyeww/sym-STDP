@@ -23,7 +23,6 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=None)
 parser.add_argument("--n_test", type=int, default=None)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--exc", type=float, default=22.5)
 parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--norm_scale", type=float, default=0.1)
 parser.add_argument("--theta_plus", type=float, default=0.05)
@@ -43,7 +42,6 @@ n_epochs = args.n_epochs
 n_train = args.n_train
 n_test = args.n_test
 n_workers = args.n_workers
-exc = args.exc
 inh = args.inh
 norm_scale = args.norm_scale
 theta_plus = args.theta_plus
@@ -54,17 +52,19 @@ update_interval = args.update_interval
 plot = args.plot
 gpu = args.gpu
 
-n_epochs = 1
-n_neurons = 100
-n_train = 5
-n_test = 4
+# n_epochs = 3
+# n_neurons = 25
+# n_train = 500
+# n_test = 100
 
 # Setup pathnames for saving files.
-datetime = date.strftime("%Y%m%d-%H%M%S_")
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-DIR_NAME = datetime + dataset_name.lower() + '-'
-DIR_NAME += str(n_neurons) + '_' + str(n_train) + '|' + str(n_test)
-RESULTS_PATH = os.path.join(ROOT_PATH, 'results')#, DIR_NAME)
+datetime = date.strftime("%Y%m%d-%H%M%S")
+data_name = dataset_name.lower() + '-' + str(n_neurons)
+epoch_num = 'epoch-' + str(n_epochs)
+data_num = str(n_train) + '|' + str(n_test)
+DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
+RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
 # paths = [RESULTS_PATH]
 # torch.set_printoptions(profile="full")
 
@@ -140,8 +140,8 @@ snn.show_acc()
 
 # Save network & results.
 print("\nSaving network & results... ...\n")
-snn.save_results()
-snn.save_sl_spikes()
+snn.save_result()
+snn.save_spike()
 snn.save_pred()
-snn.tryplot()
+snn.save_plot()
 print(" ... ...done!\n")
