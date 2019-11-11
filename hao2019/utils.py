@@ -119,7 +119,7 @@ def transform_image(
 
 def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     """
-    Set time constant of threshold potential decay & decay factor
+    Get time constant of threshold potential decay & decay factor
     for different sized network.
 
     :param n_neurons: Number of excitatory, inhibitory neurons.
@@ -138,3 +138,25 @@ def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     const = const_choices.get(n_neurons, default_value)
 
     return const[0], const[1]
+
+
+def get_lrate(n_neurons: int, default_lrates: List[float]) -> float:
+    """
+    Get learning rate for different sized network.
+
+    :param n_neurons: Number of excitatory, inhibitory neurons.
+    :param default_lrates: Default value of learning rates.
+    :return: Return pre- and post-synaptic learning rates for each layer.
+    """
+    # Num. of neurons : (nu_exc, nu_sl)
+    lrate_choices = {
+        100  : (5e-3, 4e-2),
+        400  : (5e-3, 4e-2),
+        1600 : (2e-2, 8e-2),
+        6400 : (1e-2, 4e-2),
+        10000: (7.5e-3, 4e-2),
+    }
+    lrate = lrate_choices.get(n_neurons, default_lrates)
+
+    # lrate[0]: learning rates for exc layer, lrate[1]: learning rates for SL layer.
+    return lrate[0], lrate[1]

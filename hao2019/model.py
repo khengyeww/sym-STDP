@@ -8,7 +8,7 @@ from bindsnet.network.topology import Connection
 
 from node import HaoExcNodes, HaoSLNodes
 from learning import DA_STDP
-from utils import get_network_const
+from utils import get_network_const, get_lrate
 
 
 class HaoAndHuang2019(Network):
@@ -79,10 +79,7 @@ class HaoAndHuang2019(Network):
         theta_plus, tc_theta_decay = get_network_const(self.n_neurons, default_value)
 
         # Get learning rate based on network size.
-        nu = (5e-3, 5e-3)
-        # nu_exc, nu_sl = get_lrate(self.n_neurons, nu)
-        # nu = get_lrate(self.n_neurons)  # Get input -> exc layer learning rate.
-        # nu = get_lrate(self.n_neurons)  # Get exc -> SL layer learning rate.
+        nu_exc, nu_sl = get_lrate(self.n_neurons, (nu, nu))
 
         # Layers.
         input_layer = Input(
@@ -120,7 +117,7 @@ class HaoAndHuang2019(Network):
             target=hidden_layer,
             w=w,
             update_rule=DA_STDP,
-            nu=nu,
+            nu=nu_exc,
             reduction=reduction,
             wmin=in_wmin,
             wmax=in_wmax,
@@ -146,7 +143,7 @@ class HaoAndHuang2019(Network):
             target=output_layer,
             w=w,
             update_rule=DA_STDP,
-            nu=nu,
+            nu=nu_sl,
             reduction=reduction,
             wmin=out_wmin,
             wmax=out_wmax,
