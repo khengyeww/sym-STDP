@@ -1,4 +1,4 @@
-from typing import List
+from typing import Union, Tuple, List, Sequence
 
 import os
 import torch
@@ -140,7 +140,10 @@ def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     return const[0], const[1]
 
 
-def get_lrate(n_neurons: int, default_lrates: List[float]) -> float:
+def get_lrate(
+    n_neurons: int,
+    default_lrates: Tuple[Union[float, Sequence[float]]],
+) -> float:
     """
     Get learning rate for different sized network.
 
