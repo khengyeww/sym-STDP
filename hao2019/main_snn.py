@@ -52,11 +52,6 @@ update_interval = args.update_interval
 plot = args.plot
 gpu = args.gpu
 
-# n_epochs = 3
-# n_neurons = 25
-# n_train = 500
-# n_test = 100
-
 # Setup pathnames for saving files.
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 datetime = date.strftime("%Y%m%d-%H%M%S")
