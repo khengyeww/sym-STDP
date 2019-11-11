@@ -34,7 +34,7 @@ class HaoAndHuang2019(Network):
         out_wmax: Optional[float] = 8.0,
         norm_scale: float = 0.1,
         theta_plus: float = 0.05,
-        tc_theta_decay: float = 1e7,
+        tc_theta_decay: float = 2e7,
         inpt_shape: Optional[Iterable[int]] = None,
     ) -> None:
         # language=rst
@@ -75,9 +75,16 @@ class HaoAndHuang2019(Network):
         # Set default value.
         default_value = (theta_plus, tc_theta_decay)
 
-        # Set constants based on network size.
+        # Get theta constants based on network size.
         theta_plus, tc_theta_decay = get_network_const(self.n_neurons, default_value)
 
+        # Get learning rate based on network size.
+        nu = (5e-3, 5e-3)
+        # nu_exc, nu_sl = get_lrate(self.n_neurons, nu)
+        # nu = get_lrate(self.n_neurons)  # Get input -> exc layer learning rate.
+        # nu = get_lrate(self.n_neurons)  # Get exc -> SL layer learning rate.
+
+        # Layers.
         input_layer = Input(
             n=self.n_inpt, shape=self.inpt_shape, traces=True, tc_trace=20.0
         )
@@ -98,16 +105,16 @@ class HaoAndHuang2019(Network):
         output_layer = HaoSLNodes(
             n=self.n_outpt,
             traces=True,
-            rest=-60.0,
+            rest=-45.0,
             reset=-45.0,
             thresh=-40.0,
             tc_decay=10.0,
             tc_trace=20.0,
         )
 
+        # Connections.
         w = 0.3 * torch.rand(self.n_inpt, self.n_neurons)
         norm = norm_scale * self.n_inpt  # Set normalization constant.
-        # nu = get_lrate(self.n_neurons)  # Get input -> exc layer learning rate.
         input_connection = Connection(
             source=input_layer,
             target=hidden_layer,
@@ -134,7 +141,6 @@ class HaoAndHuang2019(Network):
 
         w = 0.3 * torch.rand(self.n_neurons, self.n_outpt)
         norm = norm_scale * self.n_neurons * out_wmax  # Set normalization constant.
-        # nu = get_lrate(self.n_neurons)  # Get exc -> SL layer learning rate.
         output_connection = Connection(
             source=hidden_layer,
             target=output_layer,
@@ -147,7 +153,7 @@ class HaoAndHuang2019(Network):
             norm=norm,
         )
 
-        # Add to network
+        # Add to network.
         self.add_layer(input_layer, name="X")
         self.add_layer(hidden_layer, name="Y")
         self.add_layer(output_layer, name="Z")
