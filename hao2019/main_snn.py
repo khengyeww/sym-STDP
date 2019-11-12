@@ -7,7 +7,7 @@ from time import time as t
 
 from model import HaoAndHuang2019
 from spiking_neunet import Spiking
-from utils import msg_wrapper
+from utils import msg_wrapper, make_dirs
 
 
 # Define dataset and number of input / output neurons.
@@ -31,8 +31,9 @@ parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=250)
 parser.add_argument("--plot", dest="plot", action="store_true")
+parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(plot=False, gpu=False)
+parser.set_defaults(plot=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -50,6 +51,7 @@ dt = args.dt
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 plot = args.plot
+gif = args.gif
 gpu = args.gpu
 
 if n_train is not None:
@@ -92,6 +94,7 @@ snn = Spiking(
     dt=dt,
     update_interval=update_interval,
     plot=plot,
+    gif=gif,
     gpu=gpu,
 )
 
@@ -138,10 +141,13 @@ print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 # Print final train & test accuracy.
 snn.show_acc()
 
-# Save network & results.
 print("\nSaving network & results... ...\n")
+# Setup directories within path.
+make_dirs(RESULTS_PATH)
+
+# Save network & results.
 snn.save_result()
-snn.save_plot()
+snn.save_wmaps_plot()
 
 # Save for checking purpose.
 snn.save_sl_spike()

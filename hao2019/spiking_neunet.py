@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, make_dirs, transform_image, msg_wrapper
+from utils import load_data, transform_image, msg_wrapper
 
 
 class Spiking:
@@ -32,6 +32,7 @@ class Spiking:
         dt: float = 0.5,
         update_interval: int = 250,
         plot: bool = False,
+        gif: bool = False,
         gpu: bool = False,
     ) -> None:
         """
@@ -47,6 +48,7 @@ class Spiking:
         :param dt:              Simulation time step.
         :param update_interval: Interval to show network accuracy.
         :param plot:            Whether to plot for visualization of network training.
+        :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
         super().__init__()
@@ -59,6 +61,7 @@ class Spiking:
         self.dt = dt
         self.update_interval = update_interval
         self.plot = plot
+        self.gif = gif
         self.gpu = gpu
 
         timestep = int(time / dt)
@@ -108,9 +111,6 @@ class Spiking:
         self.train_dataset = load_data(dataset_name, encoder, True, intensity)
         self.test_dataset = load_data(dataset_name, encoder, False, intensity)
 
-        # Setup directories within path.
-        make_dirs(results_path)
-
         # Set up monitors for spikes and voltages.
         spikes = {}
         for layer in set(network.layers):
@@ -150,8 +150,18 @@ class Spiking:
         # Change training mode of network to True.
         network.train(True)
 
+        if len(dataloader) <= 80:
+            gif_interval = 2
+        else:
+            gif_interval = int(len(dataloader) / 40)
+
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
+            # Plot a weight map image for gif.
+            if self.gif and step % gif_interval == 0:
+                exc_weight = network.connections[("X", "Y")].w.detach().clone()
+                self.visualize.plot_weight_maps(exc_weight, gif=self.gif)
+
             # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
             sl_label = torch.zeros(self.n_outpt)
             sl_label[batch["label"]] = 200
@@ -196,8 +206,8 @@ class Spiking:
                 exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
             if self.plot:
+                # self.visualize.plot_every_step()
                 pass
-                # plot_every_step()
 
             self.train_spike.append(batch["label"])
             self.train_spike.append(self.spikes["Z"].get("s").squeeze().sum(0))
@@ -206,6 +216,9 @@ class Spiking:
 
         self.exc_final_weight = network.connections[("X", "Y")].w.detach().clone()
         self.sl_final_weight = network.connections[("Y", "Z")].w.detach().clone()
+
+        if self.gif:
+            self.visualize.plot_weight_maps(self.exc_final_weight, gif=self.gif)
 
     def test_network(
         self, n_samples: int = None, data_mode: str = "test", shuffle: bool = False
@@ -398,19 +411,23 @@ class Spiking:
         self.write_file(self.right_pred, "right_pred.txt")
         self.write_file(self.wrong_pred, "wrong_pred.txt")
 
-    def save_plot(self, save_extension: str = 'png') -> None:
+    def save_wmaps_plot(self, save_extension: str = 'png') -> None:
         """
-        Save plots of neurons' initial weights and trained weights.
+        Save plots of neurons' initial weight maps and trained weight maps.
 
         :param save_extension: Filename extension for saving plot.
         """
         file_name = "init_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.visualize.plot_weight_maps(self.exc_init_weight, file_path=file_path)
+        self.visualize.plot_weight_maps(
+            self.exc_init_weight, save=True, file_path=file_path
+        )
 
         file_name = "final_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
-        self.visualize.plot_weight_maps(self.exc_final_weight, file_path=file_path)
+        self.visualize.plot_weight_maps(
+            self.exc_final_weight, save=True, file_path=file_path
+        )
 
         file_name = "init_sl." + save_extension
         file_path = os.path.join(self.results_path, file_name)
@@ -418,6 +435,7 @@ class Spiking:
             self.sl_init_weight,
             fig_shape=(4, 3),
             c_max=8.0,
+            save=True,
             file_path=file_path,
         )
 
@@ -427,6 +445,7 @@ class Spiking:
             self.sl_final_weight,
             fig_shape=(4, 3),
             c_max=8.0,
+            save=True,
             file_path=file_path,
         )
 
@@ -435,17 +454,13 @@ class Spiking:
         Save trained network & accuracy results.
         """
         # Save trained network.
-        self.network.save(self.results_path + '/test_1_trained_network.pt')
+        file_path = os.path.join(self.results_path, "trained_network.pt")
+        self.network.save(file_path)
 
+        # Save results in text file.
         self.write_file(self.show_acc_msg, "results.txt")
 
-        # Save plots.
-
-        # if plot:
-        #     # Alternative way:
-        #     # plt.savefig(RESULTS_PATH + '/final.png')
-        #     img = plot_weights(in_square_weights, im=in_weights_im).figure
-        #     img.savefig(RESULTS_PATH + '/test_1_exc_weight.png')
-        #     img2 = plot_weights(out_square_weights, im=out_weights_im).figure
-        #     img2.savefig(RESULTS_PATH + '/test_1_sl_weight.png')
-        #     imageio.mimwrite(RESULTS_PATH + '/test_1_exc_weight.gif', training_progress_images)
+        # Save gif.
+        if self.gif:
+            file_path = os.path.join(self.results_path, "weight_maps.gif")
+            self.visualize.save_wmaps_gif(file_path=file_path)

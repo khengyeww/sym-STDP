@@ -29,7 +29,7 @@ class Plot:
     assigns_im = None
     perf_ax = None
     voltage_axes, voltage_ims = None, None
-    training_progress_images = []
+    weight_map_images = []
 
     # n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
     # n_sqrt2 = int(np.ceil(np.sqrt(n_outpt)))
@@ -77,25 +77,14 @@ class Plot:
         plt.pause(1e-8)
         #plt.pause(0.5)
 
-    def weights_in_gif(self) -> None:
-        """
-        Create gif from weight images.
-        """
-
-        # Convert figure to numpy array.
-        fig = in_weights_im.figure
-        data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
-        self.training_progress_images.append(data)
-
     def plot_weight_maps(
         self,
         weights: torch.Tensor,
         fig_shape: Tuple[int, int] = (3, 3),
         c_min: float = 0.0,
         c_max: float = 1.0,
-        dpi: int = DPI,
+        gif: bool = False,
+        save: bool = False,
         file_path: str = str(uuid.uuid4()),
     ) -> None:
         """
@@ -105,11 +94,13 @@ class Plot:
         :param fig_shape: Horizontal, vertical figure shape for plot.
         :param c_min: Lower bound of the range that the colormap covers.
         :param c_max: Upper bound of the range that the colormap covers.
-        :param dpi: Output resolution to use when saving image.
+        :param gif: Save plot of weight maps for gif.
+        :param save: Whether to save the plot's figure.
         :param file_path: File path (contains filename) to use when saving.
         """
-        # Turn the interactive mode off.
-        plt.ioff()
+        # Turn the interactive mode off if just for saving.
+        if save or gif:
+            plt.ioff()
 
         # Number of neurons from front layer.
         n_pre_neu = len(weights)
@@ -166,4 +157,39 @@ class Plot:
         cbar_ax = fig.add_axes([0.85, 0.15, 0.03, 0.7])
         fig.colorbar(im, cax=cbar_ax)
 
-        plt.savefig(file_path, dpi=dpi)
+        if gif:
+            self.wmaps_for_gif()
+
+        if save:
+            self.save_plot(file_path=file_path)
+
+        plt.close()
+
+    def wmaps_for_gif(self) -> None:
+        """
+        Store weight map images for gif.
+        """
+        # Convert figure to numpy array.
+        fig = plt.gcf()
+        fig.canvas.draw()
+        data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+        self.weight_map_images.append(data)
+
+    def save_plot(self, dpi: int = DPI, file_path: str = str(uuid.uuid4())) -> None:
+        """
+        Save plot.
+
+        :param dpi: Output resolution to use when saving image.
+        :param file_path: File path (contains filename) to use when saving.
+        """
+        plt.savefig(file_path, dpi=dpi, bbox_inches='tight')
+
+    def save_wmaps_gif(self, file_path: str = str(uuid.uuid4())) -> None:
+        """
+        Save gif of weight maps.
+
+        :param file_path: File path (contains filename) to use when saving.
+        """
+        imageio.mimwrite(file_path, self.weight_map_images, duration=0.25)
