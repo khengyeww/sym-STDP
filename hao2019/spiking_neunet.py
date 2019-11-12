@@ -134,14 +134,13 @@ class Spiking:
         :param n_samples: Number of samples to use from dataset for training.
         :param shuffle: Whether to shuffle the dataset.
         """
-        if n_samples is not None:
-            assert (n_samples > 0), "Samples for training must be greater than 0"
+        # Set train dataset as default dataset.
+        dataset = self.train_dataset
 
+        if n_samples is not None:
             dataset = torch.utils.data.random_split(
-                self.train_dataset, [n_samples, len(self.train_dataset) - n_samples]
+                dataset, [n_samples, len(dataset) - n_samples]
             )[0]
-        else:
-            dataset = self.train_dataset
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -153,10 +152,6 @@ class Spiking:
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
-            # if batch["label"] != 9:
-            #     # print(batch["label"])
-            #     continue
-
             # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
             sl_label = torch.zeros(self.n_outpt)
             sl_label[batch["label"]] = 200
@@ -223,14 +218,8 @@ class Spiking:
             to use for testing.
         :param shuffle: Whether to shuffle the dataset.
         """
-        if n_samples is not None:
-            assert (n_samples > 0), "Samples for testing must be greater than 0"
-
-            dataset = torch.utils.data.random_split(
-                self.test_dataset, [n_samples, len(self.test_dataset) - n_samples]
-            )[0]
-        else:
-            dataset = self.test_dataset
+        # Set test dataset as default dataset.
+        dataset = self.test_dataset
 
         # Check for the mode selected.
         mode_list = ['train', 'validation', 'test']
@@ -242,8 +231,16 @@ class Spiking:
             print("!!! Testing the network with %s data. !!!\n" % data_mode.lower())
             data_mode = data_mode.capitalize()
 
-        # TODO
-        # Train / Validation / Test dataset based on mode?
+            # Set dataset based on mode.
+            if data_mode == 'Train':
+                dataset = self.train_dataset
+            elif data_mode == 'Validation':
+                dataset = self.validation_dataset
+
+        if n_samples is not None:
+            dataset = torch.utils.data.random_split(
+                dataset, [n_samples, len(dataset) - n_samples]
+            )[0]
 
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -258,10 +255,6 @@ class Spiking:
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
-            # if batch["label"] != 9:
-            #     # print(batch["label"])
-            #     continue
-
             # Calculate network accuracy at every update interval.
             if step % self.update_interval == 0 and step > 0:
                 tmp_acc = 100 * correct_pred / step
@@ -391,7 +384,7 @@ class Spiking:
         with open(file_path, 'w') as filehandle:
             filehandle.writelines("%s\n" % line for line in content)
 
-    def save_spike(self) -> None:
+    def save_sl_spike(self) -> None:
         """
         Save spike results for checking purpose.
         """
