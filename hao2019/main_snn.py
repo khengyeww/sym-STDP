@@ -52,6 +52,11 @@ update_interval = args.update_interval
 plot = args.plot
 gpu = args.gpu
 
+if n_train is not None:
+    assert (n_train > 0), "Samples for training must be greater than 0"
+if n_test is not None:
+    assert (n_test > 0), "Samples for testing must be greater than 0"
+
 # Setup pathnames for saving files.
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 datetime = date.strftime("%Y%m%d-%H%M%S")
@@ -136,7 +141,9 @@ snn.show_acc()
 # Save network & results.
 print("\nSaving network & results... ...\n")
 snn.save_result()
-snn.save_spike()
-snn.save_pred()
 snn.save_plot()
+
+# Save for checking purpose.
+snn.save_sl_spike()
+snn.save_pred()
 print(" ... ...done!\n")
