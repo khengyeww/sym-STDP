@@ -29,11 +29,12 @@ parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=250)
+parser.add_argument("--update_interval", type=int, default=2000)
+parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(plot=False, gif=False, gpu=False)
+parser.set_defaults(lbl=False, plot=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -50,6 +51,7 @@ time = args.time
 dt = args.dt
 progress_interval = args.progress_interval
 update_interval = args.update_interval
+lbyl = args.lbyl
 plot = args.plot
 gif = args.gif
 gpu = args.gpu
@@ -64,7 +66,7 @@ ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 datetime = date.strftime("%Y%m%d-%H%M%S")
 data_name = dataset_name.lower() + '-' + str(n_neurons)
 epoch_num = 'epoch-' + str(n_epochs)
-data_num = str(n_train) + '|' + str(n_test)
+data_num = str(n_train) + ',' + str(n_test)
 DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
 RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
 # paths = [RESULTS_PATH]
@@ -85,7 +87,6 @@ network = HaoAndHuang2019(
 # Setup network for training & testing.
 snn = Spiking(
     network=network,
-    n_outpt=n_outpt,
     results_path=RESULTS_PATH,
     dataset_name=dataset_name,
     seed=seed,
@@ -113,9 +114,12 @@ for epoch in range(n_epochs):
         print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
         start = t()
 
-    # Decide number of samples to use for training.
-    # Default to all samples.
-    snn.train_network(n_train)
+    if not lbyl:
+        # Decide number of samples to use for training.
+        # Default to all samples.
+        snn.train_network(n_train)
+    else:
+        snn.train_network_lbyl(n_train)
 
 print("Progress: %d / %d (%.4f minutes)" % (epoch + 1, n_epochs, ((t() - start) / 60)))
 print("Training complete.\n")
@@ -131,7 +135,7 @@ msg_wrapper(msg, 1)
 start = t()
 
 # Decide number of samples & dataset to use for testing.
-# Default to all samples & test mode.
+# Default to all samples & test data mode (using test dataset).
 snn.test_network(n_test, data_mode='test')
 
 print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
@@ -139,7 +143,7 @@ print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 # ------------------------------------------------------------------------------- #
 
 # Print final train & test accuracy.
-snn.show_acc()
+snn.show_final_acc()
 
 print("\nSaving network & results... ...\n")
 # Setup directories within path.
