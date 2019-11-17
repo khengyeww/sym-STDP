@@ -7,7 +7,7 @@ This project is created for own undergraduate research.
  - Python 3.6
  - BindsNET 0.2.4
  
-N.B. Versions mentioned above are verified to work.
+N.B. Versions mentioned above are verified to work together. Other versions might not be compatible.
 
 ## Setup
 
