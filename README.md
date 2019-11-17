@@ -2,12 +2,18 @@
 
 This project is created for own undergraduate research.
 
-## Dependencies
+## Requirements
+ - Ubuntu 16.04
  - Python 3.6
- - Pytorch
- - BindsNET
+ - BindsNET 0.2.4
+ 
+N.B. Versions mentioned above are verified to work.
 
-Alternatively, install the requirements using requirements.txt:
+## Setup
+
+Head over to [BindsNET](https://github.com/Hananel-Hazan/bindsnet) and follow their instruction for environment setup.
+
+Alternatively, install the required packages using requirements.txt provided:
 
 ```
 pip install -r requirements.txt
