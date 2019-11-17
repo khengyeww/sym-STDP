@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import List
 
 import os
 import torch
@@ -26,6 +26,7 @@ class Spiking:
         results_path: str,
         dataset_name: str = "MNIST",
         seed: int = 0,
+        n_epochs: int = 1,
         n_workers: int = -1,
         time: int = 350,
         dt: float = 0.5,
@@ -41,6 +42,7 @@ class Spiking:
         :param results_path:    Path to save training & testing results.
         :param dataset_name:    Name of dataset to use.
         :param seed:            Seed for pseudorandom number generator (PRNG).
+        :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
         :param time:            Length of Poisson spike train per input variable.
         :param dt:              Simulation time step.
@@ -49,8 +51,6 @@ class Spiking:
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
-        super().__init__()
-
         self.network = network
         self.results_path = results_path
         self.n_workers = n_workers
@@ -62,6 +62,9 @@ class Spiking:
         self.gpu = gpu
 
         self.n_outpt = network.layers["Z"].n
+        self.profile = {
+            'method': None, 'n_epochs': n_epochs, 'n_train': None, 'n_test': None
+        }
 
         timestep = int(time / dt)
         self.timestep = timestep
@@ -82,7 +85,7 @@ class Spiking:
 
         # Store network accuracy.
         self.acc_history = {'train_acc': [], 'test_acc': []}
-        self.show_acc_msg = []
+        self.show_acc = ["N/A", "N/A"]
 
         # Initialize plot class.
         self.visualize = Plot()
@@ -90,8 +93,6 @@ class Spiking:
         # Save initial weights for plot.
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
         self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
-        self.exc_final_weight = self.exc_init_weight
-        self.sl_final_weight = self.sl_init_weight
 
         # Determines number of workers to use.
         if n_workers == -1:
@@ -137,6 +138,7 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset.
         """
         print("Simultaneous training method.")
+        self.profile['method'] = "Simultaneous"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -148,6 +150,7 @@ class Spiking:
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
+        self.profile['n_train'] = len(dataloader)
 
         network = self.network
 
@@ -155,10 +158,10 @@ class Spiking:
         network.train(True)
 
         if self.gif:
-            if len(dataloader) <= 80:
+            if len(dataloader) <= 70:
                 gif_interval = 2
             else:
-                gif_interval = int(len(dataloader) / 40)
+                gif_interval = int(len(dataloader) / 35)
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
@@ -214,15 +217,15 @@ class Spiking:
                 self.visualize.plot_every_step()
 
             self.sl_train_spike.append(batch["label"])
-            self.sl_train_spike.append(self.spikes["Z"].get("s").squeeze().sum(0))
+            sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
+            self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
+            self.sl_train_spike.append('')
 
             network.reset_state_variables()  # Reset state variables.
 
-        self.exc_final_weight = network.connections[("X", "Y")].w.detach().clone()
-        self.sl_final_weight = network.connections[("Y", "Z")].w.detach().clone()
-
         if self.gif:
-            self.visualize.plot_weight_maps(self.exc_final_weight, gif=self.gif)
+            weight = network.connections[("X", "Y")].w.detach().clone()
+            self.visualize.plot_weight_maps(weight, gif=self.gif)
 
     def train_network_lbyl(self, n_samples: int = None, shuffle: bool = False) -> None:
         """
@@ -233,6 +236,7 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset.
         """
         print("Layer-by-layer training method.")
+        self.profile['method'] = "Layer-by-layer"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -244,6 +248,7 @@ class Spiking:
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
+        self.profile['n_train'] = len(dataloader)
 
         network = self.network
 
@@ -251,10 +256,10 @@ class Spiking:
         network.train(True)
 
         if self.gif:
-            if len(dataloader) <= 80:
+            if len(dataloader) <= 70:
                 gif_interval = 2
             else:
-                gif_interval = int(len(dataloader) / 40)
+                gif_interval = int(len(dataloader) / 35)
 
         # Phase 1
         # True: Train only hidden (exc, inh) layer.
@@ -335,16 +340,15 @@ class Spiking:
 
                 if not phase1:
                     self.sl_train_spike.append(batch["label"])
-                    self.sl_train_spike.append(self.spikes["Z"].get("s").squeeze().sum(0))
+                    sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
+                    self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
+                    self.sl_train_spike.append('')
 
                 network.reset_state_variables()  # Reset state variables.
 
-            if phase1:
-                self.exc_final_weight = network.connections[("X", "Y")].w.detach().clone()
-                if self.gif:
-                    self.visualize.plot_weight_maps(self.exc_final_weight, gif=self.gif)
-            else:
-                self.sl_final_weight = network.connections[("Y", "Z")].w.detach().clone()
+            if phase1 and self.gif:
+                weight = network.connections[("Y", "Z")].w.detach().clone()
+                self.visualize.plot_weight_maps(weight, gif=self.gif)
 
             phase1 = not phase1
 
@@ -385,6 +389,7 @@ class Spiking:
 
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
+        self.profile['n_test'] = len(dataloader)
 
         network = self.network
 
@@ -484,7 +489,7 @@ class Spiking:
         msg = "Ground truth: {}, Predict: {}".format(label, prediction)
 
         self.sl_test_spike.append(msg)
-        self.sl_test_spike.append(n_spikes)
+        self.sl_test_spike.append(n_spikes.cpu().numpy().tolist())
         self.sl_test_spike.append('')
 
         if label != prediction:
@@ -500,19 +505,21 @@ class Spiking:
         Show final accuracy of the network.
         """
         train_acc = test_acc = "N/A"
+        msg = []
 
         if len(self.acc_history['train_acc']) != 0:
-            train_acc = '%.2f' % np.mean(self.acc_history['train_acc'])
+            train_acc = '%.2f' % np.mean(self.acc_history['train_acc']) + '%'
+            self.show_acc[0] = train_acc
         if len(self.acc_history['test_acc']) != 0:
-            test_acc = '%.2f' % np.mean(self.acc_history['test_acc'])
+            test_acc = '%.2f' % np.mean(self.acc_history['test_acc']) + '%'
+            self.show_acc[1] = test_acc
 
-        train_msg = "Network train accuracy: " + train_acc
-        test_msg = "Network test accuracy: " + test_acc
+        acc_msg = "Network train accuracy: " + train_acc
+        msg.append(acc_msg)
+        acc_msg = "Network test accuracy: " + test_acc
+        msg.append(acc_msg)
 
-        self.show_acc_msg.append(train_msg)
-        self.show_acc_msg.append(test_msg)
-
-        msg_wrapper(self.show_acc_msg, 2)
+        msg_wrapper(msg, 2)
 
     def write_file(self, content: List[str], file_name: str) -> None:
         """
@@ -545,6 +552,9 @@ class Spiking:
 
         :param save_extension: Filename extension for saving plot.
         """
+        exc_final_weight = self.network.connections[("X", "Y")].w.detach().clone()
+        sl_final_weight = self.network.connections[("Y", "Z")].w.detach().clone()
+
         file_name = "init_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
         self.visualize.plot_weight_maps(
@@ -554,7 +564,7 @@ class Spiking:
         file_name = "final_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
         self.visualize.plot_weight_maps(
-            self.exc_final_weight, save=True, file_path=file_path
+            exc_final_weight, save=True, file_path=file_path
         )
 
         file_name = "init_sl." + save_extension
@@ -570,7 +580,7 @@ class Spiking:
         file_name = "final_sl." + save_extension
         file_path = os.path.join(self.results_path, file_name)
         self.visualize.plot_weight_maps(
-            self.sl_final_weight,
+            sl_final_weight,
             fig_shape=(4, 3),
             c_max=8.0,
             save=True,
@@ -586,12 +596,30 @@ class Spiking:
         self.network.save(file_path)
 
         # Save network profile & results in text file.
-        self.write_file(self.show_acc_msg, "results.txt")
+        self.save_network_details()
 
         # Save gif.
         if self.gif:
             file_path = os.path.join(self.results_path, "weight_maps.gif")
             self.visualize.save_wmaps_gif(file_path=file_path)
 
-    def get_network_profile(self) -> None:
-        pass
+    def save_network_details(self) -> None:
+        """
+        Save network profile and experiment conditions.
+        """
+        file_path = os.path.join(self.results_path, "results.txt")
+        with open(file_path, 'w') as f:
+            f.write("# Network Architecture #\n")
+            f.write("Number of neurons in layer:\n")
+            f.write("    Input  -> {}\n".format(self.network.layers["X"].n))
+            f.write("    Hidden -> {}\n".format(self.network.layers["Y"].n))
+            f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
+            f.write("Training method: {}\n\n".format(self.profile['method']))
+            f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))
+            f.write("Number of data used:\n")
+            f.write("    Training -> {}\n".format(self.profile['n_train']))
+            f.write("    Testing  -> {}\n\n".format(self.profile['n_test']))
+            f.write("Network accuracy:\n")
+            f.write("    Train -> {}\n".format(self.show_acc[0]))
+            f.write("    Test  -> {}\n".format(self.show_acc[1]))
+            f.close()

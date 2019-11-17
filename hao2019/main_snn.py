@@ -90,6 +90,7 @@ snn = Spiking(
     results_path=RESULTS_PATH,
     dataset_name=dataset_name,
     seed=seed,
+    n_epochs=n_epochs,
     n_workers=n_workers,
     time=time,
     dt=dt,
