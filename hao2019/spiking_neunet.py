@@ -26,6 +26,7 @@ class Spiking:
         results_path: str,
         dataset_name: str = "MNIST",
         seed: int = 0,
+        batch_size: int = 1,
         n_epochs: int = 1,
         n_workers: int = -1,
         time: int = 350,
@@ -42,6 +43,7 @@ class Spiking:
         :param results_path:    Path to save training & testing results.
         :param dataset_name:    Name of dataset to use.
         :param seed:            Seed for pseudorandom number generator (PRNG).
+        :param batch_size:      Mini-batch size.
         :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
         :param time:            Length of Poisson spike train per input variable.
@@ -53,10 +55,11 @@ class Spiking:
         """
         self.network = network
         self.results_path = results_path
+        self.batch_size = batch_size
         self.n_workers = n_workers
         self.time = time
         self.dt = dt
-        self.update_interval = update_interval
+        self.update_interval = update_interval / batch_size
         self.plot = plot
         self.gif = gif
         self.gpu = gpu
@@ -176,7 +179,10 @@ class Spiking:
             sl_spike = poisson(datum=sl_label, time=self.time, dt=self.dt)
 
             # Get next input sample & SL neurons one-hot spikes.
-            inputs = {"X": batch["encoded_image"].view(self.timestep, 1, 1, 28, 28)}
+            batch_input = batch["encoded_image"].view(
+                self.timestep, self.batch_size, 1, 28, 28
+            )
+            inputs = {"X": batch_input}
             clamp = {"Z": sl_spike}
             if self.gpu:
                 inputs = {k: v.cuda() for k, v in inputs.items()}
@@ -206,7 +212,7 @@ class Spiking:
                 )
                 new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
 
-                inputs = {"X": new_encoded_image.view(self.timestep, 1, 1, 28, 28)}
+                inputs = {"X": new_encoded_image}
                 if self.gpu:
                     inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -326,7 +332,7 @@ class Spiking:
                         datum=new_image, time=self.time, dt=self.dt
                     )
 
-                    inputs = {"X": new_encoded_image.view(self.timestep, 1, 1, 28, 28)}
+                    inputs = {"X": new_encoded_image}
                     if self.gpu:
                         inputs = {k: v.cuda() for k, v in inputs.items()}
 
@@ -453,7 +459,7 @@ class Spiking:
         # Create a dataloader to iterate and batch data.
         dataloader = torch.utils.data.DataLoader(
             dataset,
-            batch_size=1,
+            batch_size=self.batch_size,
             shuffle=shuffle,
             num_workers=self.n_workers,
             pin_memory=self.gpu,
@@ -614,7 +620,8 @@ class Spiking:
             f.write("    Input  -> {}\n".format(self.network.layers["X"].n))
             f.write("    Hidden -> {}\n".format(self.network.layers["Y"].n))
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
-            f.write("Training method: {}\n\n".format(self.profile['method']))
+            f.write("Training method : {}\n".format(self.profile['method']))
+            f.write("Minibatch size  : {}\n".format(self.batch_size))
             f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))
             f.write("Number of data used:\n")
             f.write("    Training -> {}\n".format(self.profile['n_train']))

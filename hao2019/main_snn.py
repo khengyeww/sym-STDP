@@ -19,6 +19,7 @@ n_outpt = 10
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--n_neurons", type=int, default=100)
+parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=None)
 parser.add_argument("--n_test", type=int, default=None)
@@ -40,6 +41,7 @@ args = parser.parse_args()
 
 seed = args.seed
 n_neurons = args.n_neurons
+batch_size = args.batch_size
 n_epochs = args.n_epochs
 n_train = args.n_train
 n_test = args.n_test
@@ -90,6 +92,7 @@ snn = Spiking(
     results_path=RESULTS_PATH,
     dataset_name=dataset_name,
     seed=seed,
+    batch_size=batch_size,
     n_epochs=n_epochs,
     n_workers=n_workers,
     time=time,
