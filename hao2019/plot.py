@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict
 
 import uuid
 import torch
@@ -6,12 +6,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import imageio
 
-from bindsnet.utils import get_square_weights, get_square_assignments
+from bindsnet.network.network import Network
+from bindsnet.network.monitors import Monitor
+from bindsnet.utils import get_square_weights
 from bindsnet.analysis.plotting import (
     plot_input,
     plot_spikes,
     plot_weights,
-    plot_assignments,
     plot_performance,
     plot_voltages,
 )
@@ -22,60 +23,8 @@ class Plot:
     Class for visualization by plot functions.
     """
 
-    inpt_ims, inpt_axes = None, None
-    spike_ims, spike_axes = None, None
-    in_weights_im = None
-    out_weights_im = None
-    assigns_im = None
-    perf_ax = None
-    voltage_axes, voltage_ims = None, None
-    weight_map_images = []
-
-    # n_sqrt = int(np.ceil(np.sqrt(n_neurons)))
-    # n_sqrt2 = int(np.ceil(np.sqrt(n_outpt)))
-
     DPI: int = 300
-
-    def plot_every_step(self) -> None:
-        image = batch["image"].view(28, 28)
-        inpt = inputs["X"].view(int(time/dt), 784).sum(0).view(28, 28)
-
-        input_exc_weights = network.connections[("X", "Y")].w
-        in_square_weights = get_square_weights(
-            input_exc_weights.view(784, n_neurons), n_sqrt, 28
-        )
-
-        output_exc_weights = network.connections[("Y", "Z")].w
-        out_square_weights = get_square_weights(
-            output_exc_weights.view(n_neurons, n_outpt), n_sqrt2, 10
-        )
-
-        square_assignments = get_square_assignments(assignments, n_sqrt)
-        spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
-        voltages_ = {"Y": y_voltages}
-
-        """ New version.
-        # image = batch["image"][:, 0].view(28, 28)
-        # inpt = inputs["X"][:, 0].view(time, 784).sum(0).view(28, 28)
-        # spikes_ = {
-        #         layer: spikes[layer].get("s")[:, 0].contiguous() for layer in spikes
-        # }
-        """
-
-        # inpt_axes, inpt_ims = plot_input(
-        #     image, inpt, label=batch["label"], axes=inpt_axes, ims=inpt_ims
-        # )
-        # spike_ims, spike_axes = plot_spikes(spikes_, ims=spike_ims, axes=spike_axes)
-        in_weights_im = plot_weights(in_square_weights, im=in_weights_im)
-        out_weights_im = plot_weights(out_square_weights, im=out_weights_im)
-        # assigns_im = plot_assignments(square_assignments, im=assigns_im)
-        # perf_ax = plot_performance(accuracy, ax=perf_ax)
-        # voltage_ims, voltage_axes = plot_voltages(
-        #     voltages_, ims=voltage_ims, axes=voltage_axes, plot_type="line"
-        # )
-
-        plt.pause(1e-8)
-        #plt.pause(0.5)
+    weight_map_images = []
 
     def plot_weight_maps(
         self,
@@ -96,7 +45,7 @@ class Plot:
         :param c_max: Upper bound of the range that the colormap covers.
         :param gif: Save plot of weight maps for gif.
         :param save: Whether to save the plot's figure.
-        :param file_path: File path (contains filename) to use when saving.
+        :param file_path: Path (contains filename) to use when saving the object.
         """
         # Turn the interactive mode off if just for saving.
         if save or gif:
@@ -182,7 +131,7 @@ class Plot:
         Save plot.
 
         :param dpi: Output resolution to use when saving image.
-        :param file_path: File path (contains filename) to use when saving.
+        :param file_path: Path (contains filename) to use when saving the object.
         """
         plt.savefig(file_path, dpi=dpi, bbox_inches='tight')
 
@@ -190,6 +139,80 @@ class Plot:
         """
         Save gif of weight maps.
 
-        :param file_path: File path (contains filename) to use when saving.
+        :param file_path: Path (contains filename) to use when saving the object.
         """
-        imageio.mimwrite(file_path, self.weight_map_images, duration=0.25)
+        if self.weight_map_images:
+            imageio.mimwrite(file_path, self.weight_map_images)
+
+    def plot_every_step(
+        self,
+        batch: Dict[str, torch.Tensor],
+        inputs: Dict[str, torch.Tensor],
+        spikes: Monitor,
+        voltages: Monitor,
+        accuracy: float = None,
+    ) -> None:
+        """
+        Visualize network's training process.
+        *** This function is currently broken and unusable. ***
+
+        :param batch: Current batch from dataset.
+        :param inputs: Current inputs from batch.
+        :param spikes: Spike monitor.
+        :param voltages: Voltage monitor.
+        :param accuracy: Network accuracy.
+        """
+        inpt_ims, inpt_axes = None, None
+        spike_ims, spike_axes = None, None
+        weights_im = None
+        assigns_im = None
+        perf_ax = None
+        voltage_axes, voltage_ims = None, None
+
+        n_inpt = self.network.n_inpt
+        n_neurons = self.network.n_neurons
+        n_outpt = self.network.n_outpt
+        inpt_sqrt = int(np.ceil(np.sqrt(n_inpt)))
+        neu_sqrt = int(np.ceil(np.sqrt(n_neurons)))
+        outpt_sqrt = int(np.ceil(np.sqrt(n_outpt)))
+        inpt_view = (inpt_sqrt, inpt_sqrt)
+
+        image = batch["image"].view(inpt_view)
+        inpt = inputs["X"].view(self.timestep, n_inpt).sum(0).view(inpt_view)
+
+        input_exc_weights = self.network.connections[("X", "Y")].w
+        in_square_weights = get_square_weights(
+            input_exc_weights.view(n_inpt, n_neurons), neu_sqrt, inpt_sqrt
+        )
+
+        output_exc_weights = self.network.connections[("Y", "Z")].w
+        out_square_weights = get_square_weights(
+            output_exc_weights.view(n_neurons, n_outpt), outpt_sqrt, neu_sqrt
+        )
+
+        spikes_ = {layer: spikes[layer].get("s") for layer in spikes}
+        voltages_ = {layer: voltages[layer].get("v") for layer in voltages}
+
+        """ For mini-batch.
+        # image = batch["image"][:, 0].view(28, 28)
+        # inpt = inputs["X"][:, 0].view(time, 784).sum(0).view(28, 28)
+        # spikes_ = {
+        #         layer: spikes[layer].get("s")[:, 0].contiguous() for layer in spikes
+        # }
+        """
+
+        inpt_axes, inpt_ims = plot_input(
+            image, inpt, label=batch["label"], axes=self.inpt_axes, ims=self.inpt_ims
+        )
+        spike_ims, spike_axes = plot_spikes(
+            spikes_, ims=self.spike_ims, axes=self.spike_axes
+        )
+        in_weights_im = plot_weights(in_square_weights, im=self.in_weights_im)
+        out_weights_im = plot_weights(out_square_weights, im=self.out_weights_im)
+        if accuracy is not None:
+            perf_ax = plot_performance(accuracy, ax=self.perf_ax)
+        voltage_ims, voltage_axes = plot_voltages(
+            voltages_, ims=self.voltage_ims, axes=self.voltage_axes, plot_type="line"
+        )
+
+        plt.pause(1e-8)

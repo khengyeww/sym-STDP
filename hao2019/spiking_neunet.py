@@ -37,7 +37,7 @@ class Spiking:
         gpu: bool = False,
     ) -> None:
         """
-        Testing network with test data.
+        Constructor for class Spiking.
 
         :param network:         Network model to use.
         :param results_path:    Path to save training & testing results.
@@ -49,7 +49,7 @@ class Spiking:
         :param time:            Length of Poisson spike train per input variable.
         :param dt:              Simulation time step.
         :param update_interval: Interval to show network accuracy.
-        :param plot:            Whether to plot for visualization of network training.
+        :param plot:            Whether to visualize network's training process.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
@@ -219,9 +219,6 @@ class Spiking:
                 network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
                 exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
-            if self.plot:
-                self.visualize.plot_every_step()
-
             self.sl_train_spike.append(batch["label"])
             sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
             self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
@@ -340,9 +337,6 @@ class Spiking:
                         inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp
                     )
                     exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
-
-                if self.plot:
-                    self.visualize.plot_every_step()
 
                 if not phase1:
                     self.sl_train_spike.append(batch["label"])
