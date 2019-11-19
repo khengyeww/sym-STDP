@@ -347,7 +347,7 @@ class Spiking:
                 network.reset_state_variables()  # Reset state variables.
 
             if phase1 and self.gif:
-                weight = network.connections[("Y", "Z")].w.detach().clone()
+                weight = network.connections[("X", "Y")].w.detach().clone()
                 self.visualize.plot_weight_maps(weight, gif=self.gif)
 
             phase1 = not phase1
