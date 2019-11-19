@@ -598,9 +598,10 @@ class Spiking:
         # Save network profile & results in text file.
         self.save_network_details()
         for acc in self.acc_history:
-            self.acc_history[acc].insert(0, "Accuracy of each epoch:")
-        self.write_file(self.acc_history['train_acc'], "train_acc.txt")
-        self.write_file(self.acc_history['test_acc'], "test_acc.txt")
+            # Only save to text file when accuracy list is not empty.
+            if len(self.acc_history[acc]) != 0:
+                self.acc_history[acc].insert(0, "Accuracy of each epoch:")
+                self.write_file(self.acc_history[acc], acc + ".txt")
 
         # Save gif.
         if self.gif:

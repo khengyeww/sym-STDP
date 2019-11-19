@@ -114,8 +114,14 @@ msg_wrapper(msg, 1)
 start = t()
 
 for epoch in range(n_epochs):
+    if epoch != 0:
+        msg = ["+++ Resume training. +++"]
+        msg_wrapper(msg, 1)
+
     if epoch % progress_interval == 0:
-        print("Progress: %d / %d (%.4f seconds)" % (epoch, n_epochs, t() - start))
+        print(
+            "Progress: %d / %d (%.4f minutes)" % (epoch, n_epochs, ((t() - start) / 60))
+        )
         start = t()
 
     if not lbyl:
@@ -125,24 +131,26 @@ for epoch in range(n_epochs):
     else:
         snn.train_network_lbyl(n_train)
 
+    # ------------------------------------------------------------------------------- #
+
+    """
+        ### Testing Session ###
+    """
+    # Test the network.
+    msg = ["--- Begin testing. ---"]
+    msg_wrapper(msg, 1)
+    start_test = t()
+
+    # Decide number of samples & dataset to use for testing.
+    # Default to all samples & test data mode (using test dataset).
+    snn.test_network(n_test, data_mode='test')
+
+    print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))
+
+    # ------------------------------------------------------------------------------- #
+
 print("Progress: %d / %d (%.4f minutes)" % (epoch + 1, n_epochs, ((t() - start) / 60)))
 print("Training complete.\n")
-
-# ------------------------------------------------------------------------------- #
-
-"""
-    ### Testing Session ###
-"""
-# Test the network.
-msg = ["### Begin testing. ###"]
-msg_wrapper(msg, 1)
-start = t()
-
-# Decide number of samples & dataset to use for testing.
-# Default to all samples & test data mode (using test dataset).
-snn.test_network(n_test, data_mode='test')
-
-print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 
 # ------------------------------------------------------------------------------- #
 
