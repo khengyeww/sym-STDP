@@ -597,6 +597,10 @@ class Spiking:
 
         # Save network profile & results in text file.
         self.save_network_details()
+        for acc in self.acc_history:
+            self.acc_history[acc].insert(0, "Accuracy of each epoch:")
+        self.write_file(self.acc_history['train_acc'], "train_acc.txt")
+        self.write_file(self.acc_history['test_acc'], "test_acc.txt")
 
         # Save gif.
         if self.gif:
@@ -620,7 +624,7 @@ class Spiking:
             f.write("Number of data used:\n")
             f.write("    Training -> {}\n".format(self.profile['n_train']))
             f.write("    Testing  -> {}\n\n".format(self.profile['n_test']))
-            f.write("Network accuracy:\n")
+            f.write("Network's average accuracy:\n")
             f.write("    Train -> {}\n".format(self.show_acc[0]))
             f.write("    Test  -> {}\n".format(self.show_acc[1]))
             f.close()
