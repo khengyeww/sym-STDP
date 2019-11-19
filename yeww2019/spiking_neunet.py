@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, transform_image, msg_wrapper
+from utils import load_data, transform_image, msg_wrapper, arrange_labels
 
 
 class Spiking:
@@ -66,7 +66,11 @@ class Spiking:
 
         self.n_outpt = network.layers["Z"].n
         self.profile = {
-            'method': None, 'n_epochs': n_epochs, 'n_train': None, 'n_test': None
+            'dataset_name': dataset_name,
+            'method': None,
+            'n_epochs': n_epochs,
+            'n_train': None,
+            'n_test': None,
         }
 
         timestep = int(time / dt)
@@ -145,6 +149,9 @@ class Spiking:
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
+
+        # Rearrange the dataset by label order.
+        dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -243,6 +250,9 @@ class Spiking:
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
+
+        # Rearrange the dataset by label order.
+        dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -614,11 +624,12 @@ class Spiking:
         """
         file_path = os.path.join(self.results_path, "results.txt")
         with open(file_path, 'w') as f:
-            f.write("# Network Architecture #\n")
+            f.write("# Network Architecture #\n\n")
             f.write("Number of neurons in layer:\n")
             f.write("    Input  -> {}\n".format(self.network.layers["X"].n))
             f.write("    Hidden -> {}\n".format(self.network.layers["Y"].n))
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
+            f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
             f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
             f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))

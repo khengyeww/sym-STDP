@@ -2,6 +2,7 @@ from typing import Union, Tuple, List, Sequence
 
 import os
 import torch
+import numpy as np
 
 from torchvision import transforms
 from textwrap import wrap
