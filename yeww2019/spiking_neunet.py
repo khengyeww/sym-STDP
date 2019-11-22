@@ -105,6 +105,10 @@ class Spiking:
         if n_workers == -1:
             self.n_workers = gpu * 4 * torch.cuda.device_count()
 
+        # Sets max number of images to use for gif.
+        if gif:
+            self.n_gif_img = 35
+
         # Sets up Gpu use.
         if gpu:
             torch.cuda.manual_seed_all(seed)
@@ -167,11 +171,13 @@ class Spiking:
         # Change training mode of network to True.
         network.train(True)
 
+        # Determine the interval to plot weight map for gif.
         if self.gif:
-            if len(dataloader) <= 70:
+            data_length = len(dataloader) * self.profile['n_epochs']
+            if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
-                gif_interval = int(len(dataloader) / 35)
+                gif_interval = int(data_length / self.n_gif_img)
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
@@ -233,10 +239,6 @@ class Spiking:
 
             network.reset_state_variables()  # Reset state variables.
 
-        if self.gif:
-            weight = network.connections[("X", "Y")].w.detach().clone()
-            self.visualize.plot_weight_maps(weight, gif=self.gif)
-
     def train_network_lbyl(self, n_samples: int = None, shuffle: bool = False) -> None:
         """
         Train the spiking neural network by using layer-by-layer training
@@ -268,11 +270,13 @@ class Spiking:
         # Change training mode of network to True.
         network.train(True)
 
+        # Determine the interval to plot weight map for gif.
         if self.gif:
-            if len(dataloader) <= 70:
+            data_length = len(dataloader) * self.profile['n_epochs']
+            if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
-                gif_interval = int(len(dataloader) / 35)
+                gif_interval = int(data_length / self.n_gif_img)
 
         # Phase 1
         # True: Train only hidden (exc, inh) layer.
@@ -355,10 +359,6 @@ class Spiking:
                     self.sl_train_spike.append('')
 
                 network.reset_state_variables()  # Reset state variables.
-
-            if phase1 and self.gif:
-                weight = network.connections[("X", "Y")].w.detach().clone()
-                self.visualize.plot_weight_maps(weight, gif=self.gif)
 
             phase1 = not phase1
 
@@ -615,6 +615,10 @@ class Spiking:
 
         # Save gif.
         if self.gif:
+            # Plot the last weight map for gif.
+            weight = self.network.connections[("X", "Y")].w.detach().clone()
+            self.visualize.plot_weight_maps(weight, gif=self.gif)
+
             file_path = os.path.join(self.results_path, "weight_maps.gif")
             self.visualize.save_wmaps_gif(file_path=file_path)
 
