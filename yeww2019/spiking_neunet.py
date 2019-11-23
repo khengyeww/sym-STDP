@@ -605,13 +605,9 @@ class Spiking:
         file_path = os.path.join(self.results_path, "trained_network.pt")
         self.network.save(file_path)
 
-        # Save network profile & results in text file.
+        # Save network profile, results & accuracy plots.
         self.save_network_details()
-        for acc in self.acc_history:
-            # Only save to text file when accuracy list is not empty.
-            if len(self.acc_history[acc]) != 0:
-                self.acc_history[acc].insert(0, "Accuracy of each epoch:")
-                self.write_file(self.acc_history[acc], acc + ".txt")
+        self.save_acc()
 
         # Save gif.
         if self.gif:
@@ -644,3 +640,16 @@ class Spiking:
             f.write("    Train -> {}\n".format(self.show_acc[0]))
             f.write("    Test  -> {}\n".format(self.show_acc[1]))
             f.close()
+
+    def save_acc(self) -> None:
+        """
+        Save network accuracy graph. Also write accuracy of each epoch to file.
+        """
+        file_path = os.path.join(self.results_path, "acc_graph.png")
+        self.visualize.plot_acc(self.acc_history, file_path=file_path)
+
+        for acc in self.acc_history:
+            # Only save to text file when accuracy list is not empty.
+            if len(self.acc_history[acc]) != 0:
+                self.acc_history[acc].insert(0, "Accuracy of each epoch:")
+                self.write_file(self.acc_history[acc], acc + ".txt")

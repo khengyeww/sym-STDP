@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 import uuid
 import torch
@@ -21,7 +21,14 @@ from bindsnet.analysis.plotting import (
 class Plot:
     """
     Class for visualization by plot functions.
+
+    Special thanks to Araki Hiroshi for his excellent teaching and help!!!
+    Few of the plotting functions below were borrowed from his code in
+    `<https://github.com/HiroshiARAKI/snnlibpy>`.
     """
+
+    # Turn the interactive mode off.
+    plt.ioff()
 
     DPI: int = 300
     weight_map_images = []
@@ -112,6 +119,32 @@ class Plot:
         if save:
             self.save_plot(file_path=file_path)
 
+        plt.close()
+
+    def plot_acc(
+        self,
+        acc_history: Dict[str, List[float]],
+        file_path: str = str(uuid.uuid4()),
+    ) -> None:
+        """
+        Plot and save network accuracy graph.
+
+        :param acc_history: List of train and test accuracy of each epoch.
+        :param file_path: Path (contains filename) to use when saving the object.
+        """
+        epochs = max([len(acc_history[acc]) for acc in acc_history])
+        epochs = np.arange(1, epochs+1)
+
+        for acc in acc_history:
+            if len(acc_history[acc]) != 0:
+                plt.plot(epochs, acc_history[acc], label=acc, marker='x')
+
+        plt.xticks(epochs)
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+
+        self.save_plot(file_path=file_path)
         plt.close()
 
     def wmaps_for_gif(self) -> None:
