@@ -163,6 +163,7 @@ make_dirs(RESULTS_PATH)
 
 # Save network & results.
 snn.save_result()
+# Save weight maps' plots.
 snn.save_wmaps_plot()
 
 # Save for checking purpose.

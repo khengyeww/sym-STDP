@@ -24,12 +24,13 @@ class Plot:
 
     Special thanks to Araki Hiroshi for his excellent teaching and help!!!
     Few of the plotting functions below were borrowed from his code in
-    `<https://github.com/HiroshiARAKI/snnlibpy>`.
+    `<https://github.com/HiroshiARAKI/snnlibpy>`_.
     """
 
     # Turn the interactive mode off.
     plt.ioff()
 
+    cmap: str = 'BuPu'
     DPI: int = 300
     weight_map_images = []
 
@@ -39,17 +40,23 @@ class Plot:
         fig_shape: Tuple[int, int] = (3, 3),
         c_min: float = 0.0,
         c_max: float = 1.0,
+        cmap: str = cmap,
+        overview: bool = False,
         gif: bool = False,
         save: bool = False,
         file_path: str = str(uuid.uuid4()),
     ) -> None:
         """
-        Plot weight maps of a layer's neurons with the shape of [fig_shape].
+        Plot overview image of all weight maps (all neurons).
+            or
+        Plot weight maps of certain neurons ([fig_shape] number of neurons).
 
         :param weights: Weight matrix of ``Connection`` object.
         :param fig_shape: Horizontal, vertical figure shape for plot.
         :param c_min: Lower bound of the range that the colormap covers.
         :param c_max: Upper bound of the range that the colormap covers.
+        :param cmap: Matplotlib colormap.
+        :param overview: Whether to plot overview image of all weight maps.
         :param gif: Save plot of weight maps for gif.
         :param save: Whether to save the plot's figure.
         :param file_path: Path (contains filename) to use when saving the object.
@@ -76,42 +83,57 @@ class Plot:
         # Number of neurons from current layer.
         n_post_neu = len(weights)
 
-        # Create figure of shape (m, n).
-        fig, axes = plt.subplots(ncols=fig_shape[0], nrows=fig_shape[1])
-        fig.subplots_adjust(right=0.8, hspace=0.28)
+        if overview:
+            ### Plot overview image of all weight maps! ###
 
-        index = 0
-        for cols in axes:
-            for ax in cols:
-                if index >= n_post_neu:
-                    ax.axis('off')
-                    continue
+            # Transpose and convert back to torch Tensor.
+            weights = torch.from_numpy(weights.T)
 
-                # Slice the array of weight map to fit perfect square's shape.
-                if len(weights[index]) > sq_size:
-                    tmp_weights = weights[index][:sq_size]
-                else:
-                    tmp_weights = weights[index]
+            # Square root of number of neurons from current layer.
+            neu_sqrt = int(np.sqrt(n_post_neu))
 
-                tmp_weights = tmp_weights.reshape(sq_shape)
+            # BindsNET's functions.
+            square_weights = get_square_weights(weights, neu_sqrt, size)
+            plot_weights(square_weights, cmap=cmap)
+        else:
+            ### Plot a few of neurons' weight maps only! ###
 
-                im = ax.imshow(tmp_weights, cmap='BuPu', vmin=c_min, vmax=c_max)
-                ax.set_title('Map ({})'.format(index))
-                ax.tick_params(
-                    labelbottom=False,
-                    labelleft=False,
-                    labelright=False,
-                    labeltop=False,
-                    bottom=False,
-                    left=False,
-                    right=False,
-                    top=False
-                )
-                index += 1
+            # Create figure of shape (m, n).
+            fig, axes = plt.subplots(ncols=fig_shape[0], nrows=fig_shape[1])
+            fig.subplots_adjust(right=0.8, hspace=0.28)
 
-        # cbar_ax = fig.add_axes([0.85, 0.11, 0.03, 0.77])
-        cbar_ax = fig.add_axes([0.85, 0.15, 0.03, 0.7])
-        fig.colorbar(im, cax=cbar_ax)
+            index = 0
+            for cols in axes:
+                for ax in cols:
+                    if index >= n_post_neu:
+                        ax.axis('off')
+                        continue
+
+                    # Slice the array of weight map to fit perfect square's shape.
+                    if len(weights[index]) > sq_size:
+                        tmp_weights = weights[index][:sq_size]
+                    else:
+                        tmp_weights = weights[index]
+
+                    tmp_weights = tmp_weights.reshape(sq_shape)
+
+                    im = ax.imshow(tmp_weights, cmap=cmap, vmin=c_min, vmax=c_max)
+                    ax.set_title('Map ({})'.format(index))
+                    ax.tick_params(
+                        labelbottom=False,
+                        labelleft=False,
+                        labelright=False,
+                        labeltop=False,
+                        bottom=False,
+                        left=False,
+                        right=False,
+                        top=False
+                    )
+                    index += 1
+
+            # cbar_ax = fig.add_axes([0.85, 0.11, 0.03, 0.77])
+            cbar_ax = fig.add_axes([0.85, 0.15, 0.03, 0.7])
+            fig.colorbar(im, cax=cbar_ax)
 
         if gif:
             self.wmaps_for_gif()
@@ -121,7 +143,7 @@ class Plot:
 
         plt.close()
 
-    def plot_acc(
+    def plot_accuracy(
         self,
         acc_history: Dict[str, List[float]],
         file_path: str = str(uuid.uuid4()),
@@ -137,11 +159,13 @@ class Plot:
 
         for acc in acc_history:
             if len(acc_history[acc]) != 0:
-                plt.plot(epochs, acc_history[acc], label=acc, marker='x')
+                plt.plot(epochs, acc_history[acc], label=acc, marker='*')
 
+        plt.ylim([0, 100])
         plt.xticks(epochs)
+        plt.yticks(range(0, 110, 10))
         plt.xlabel('Epochs')
-        plt.ylabel('Accuracy')
+        plt.ylabel('Accuracy (%)')
         plt.legend()
 
         self.save_plot(file_path=file_path)

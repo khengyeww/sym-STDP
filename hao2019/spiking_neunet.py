@@ -591,6 +591,12 @@ class Spiking:
             file_path=file_path,
         )
 
+        file_name = "exc_overview." + save_extension
+        file_path = os.path.join(self.results_path, file_name)
+        self.visualize.plot_weight_maps(
+            exc_final_weight, overview=True, save=True, file_path=file_path
+        )
+
     def save_result(self) -> None:
         """
         Save trained network & accuracy results.
@@ -640,7 +646,7 @@ class Spiking:
         Save network accuracy graph. Also write accuracy of each epoch to file.
         """
         file_path = os.path.join(self.results_path, "acc_graph.png")
-        self.visualize.plot_acc(self.acc_history, file_path=file_path)
+        self.visualize.plot_accuracy(self.acc_history, file_path=file_path)
 
         for acc in self.acc_history:
             # Only save to text file when accuracy list is not empty.
