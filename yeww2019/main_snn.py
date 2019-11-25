@@ -35,7 +35,7 @@ parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbl=False, plot=False, gif=False, gpu=False)
+parser.set_defaults(lbyl=False, plot=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
