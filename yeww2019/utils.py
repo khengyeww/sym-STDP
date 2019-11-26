@@ -178,6 +178,7 @@ def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Datase
 
     # Get the labels of the dataset.
     labels = set(dataset.targets)
+    # labels = [2, 1, 0]
 
     label_list = []
     new_data = []
@@ -187,6 +188,7 @@ def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Datase
     for label in labels:
         data_index = (dataset.targets == label).nonzero()
         label_list.append(data_index[0])
+        # print(label, len(data_index[0]))  # Use this to check number of data of each label.
 
     # Arrange the data and labels.
     for label in label_list:
