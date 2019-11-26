@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 import os
 import torch
@@ -77,7 +77,7 @@ class Spiking:
         self.timestep = timestep
 
         self.start_intensity_scale = 2
-        intensity = 256.0 / 8.0 * self.start_intensity_scale
+        intensity = 255.0 / 8.0 * self.start_intensity_scale
         self.start_intensity = intensity
 
         self.train_dataset = None
@@ -204,33 +204,15 @@ class Spiking:
             # Run the network on the input.
             network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
 
-            # Calculate number of spikes from excitatory neurons.            
+            # Calculate number of spikes from excitatory neurons.
             exc_spike = self.spikes["Y"].get("s").squeeze()
             exc_spike_count = exc_spike.sum()
             # Alternative way:
             # exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
 
+            # Re-present input sample if less than five spikes.
             if exc_spike_count < 5:
-                intensity_scale = self.start_intensity_scale
-
-            # Re-present the input sample with increased firing rate
-            # if excitatory neurons fire less than five spikes.
-            while exc_spike_count < 5 and intensity_scale < 32:
-                intensity_scale += 1
-                network.reset_state_variables()
-
-                # Get new generated spikes.
-                new_image = transform_image(
-                    batch["image"], intensity_scale, self.start_intensity
-                )
-                new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
-
-                inputs = {"X": new_encoded_image}
-                if self.gpu:
-                    inputs = {k: v.cuda() for k, v in inputs.items()}
-
-                network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
-                exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+                self.rerun_network(ori_image=batch["image"], clamp=clamp)
 
             self.sl_train_spike.append(batch["label"])
             sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
@@ -320,37 +302,12 @@ class Spiking:
                 # Run the network on the input.
                 network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
 
-                # Calculate number of spikes from excitatory neurons.            
-                exc_spike = self.spikes["Y"].get("s").squeeze()
-                exc_spike_count = exc_spike.sum()
-                # Alternative way:
-                # exc_spike_count = torch.sum(torch.sum(exc_spike, dim=0), dim=0)
+                # Calculate number of spikes from excitatory neurons.
+                exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
+                # Re-present input sample if less than five spikes.
                 if exc_spike_count < 5:
-                    intensity_scale = self.start_intensity_scale
-
-                # Re-present the input sample with increased firing rate
-                # if excitatory neurons fire less than five spikes.
-                while exc_spike_count < 5 and intensity_scale < 32:
-                    intensity_scale += 1
-                    network.reset_state_variables()
-
-                    # Get new generated spikes.
-                    new_image = transform_image(
-                        batch["image"], intensity_scale, self.start_intensity
-                    )
-                    new_encoded_image = poisson(
-                        datum=new_image, time=self.time, dt=self.dt
-                    )
-
-                    inputs = {"X": new_encoded_image}
-                    if self.gpu:
-                        inputs = {k: v.cuda() for k, v in inputs.items()}
-
-                    network.run(
-                        inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp
-                    )
-                    exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+                    self.rerun_network(ori_image=batch["image"], clamp=clamp)
 
                 if not phase1:
                     self.sl_train_spike.append(batch["label"])
@@ -375,6 +332,7 @@ class Spiking:
         """
         # Set test dataset as default dataset.
         dataset = self.test_dataset
+        # dataset = arrange_labels(dataset)
 
         # Check for the mode selected.
         mode_list = ['train', 'validation', 'test']
@@ -434,6 +392,13 @@ class Spiking:
             # Run the network on the input.
             network.run(inputs=inputs, time=self.time, input_time_dim=1)
 
+            # Calculate number of spikes from excitatory neurons.
+            exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+
+            # Re-present input sample if less than five spikes.
+            if exc_spike_count < 5:
+                self.rerun_network(ori_image=batch["image"])
+
             # Get spikes of output neurons.
             spikes = self.spikes["Z"].get("s").squeeze()
 
@@ -443,6 +408,8 @@ class Spiking:
             network.reset_state_variables()  # Reset state variables.
 
         acc = 100 * correct_pred / len(dataloader)
+        print("%s accuracy of current epoch: %.2f%%\n" % (data_mode, acc))
+
         if data_mode == "Train" or data_mode == "Validation":
             self.acc_history['train_acc'].append(acc)
         elif data_mode == "Test":
@@ -470,6 +437,41 @@ class Spiking:
         )
 
         return dataloader
+
+    def rerun_network(
+        self,
+        ori_image: torch.Tensor,
+        clamp: Dict[str, torch.Tensor] = {},
+    ) -> None:
+        """
+        Re-present the input sample with increased firing rate if excitatory neurons
+        fire less than five spikes.
+
+        :param ori_image: Tensor of shape ``[batch_size, *input_shape]``
+            of the original image's pixel intensity.
+        :param clamp: Spikes to be clamped to SL neurons.
+        """
+        # Calculate number of spikes from excitatory neurons.
+        exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+
+        # Set intensity scale.
+        intensity_scale = self.start_intensity_scale
+
+        while exc_spike_count < 5 and intensity_scale < 32:
+            intensity_scale += 1  # Increase firing rate by 32Hz.
+            self.network.reset_state_variables()
+
+            # Get new generated spikes.
+            new_image = transform_image(ori_image, intensity_scale, self.start_intensity)
+            new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
+
+            inputs = {"X": new_encoded_image}
+            if self.gpu:
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+
+            self.network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
+
+            exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
     def predict(
         self,
