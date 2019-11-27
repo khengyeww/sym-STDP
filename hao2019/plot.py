@@ -22,7 +22,7 @@ class Plot:
     """
     Class for visualization by plot functions.
 
-    Special thanks to Araki Hiroshi for his excellent teaching and help!!!
+    Special thanks to Hiroshi ARAKI for his excellent teaching and help!!!
     Few of the plotting functions below were borrowed from his code in
     `<https://github.com/HiroshiARAKI/snnlibpy>`_.
     """
