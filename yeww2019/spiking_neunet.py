@@ -29,8 +29,6 @@ class Spiking:
         batch_size: int = 1,
         n_epochs: int = 1,
         n_workers: int = -1,
-        time: int = 350,
-        dt: float = 0.5,
         update_interval: int = 250,
         plot: bool = False,
         gif: bool = False,
@@ -46,8 +44,6 @@ class Spiking:
         :param batch_size:      Mini-batch size.
         :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
-        :param time:            Length of Poisson spike train per input variable.
-        :param dt:              Simulation time step.
         :param update_interval: Interval to show network accuracy.
         :param plot:            Whether to visualize network's training process.
         :param gif:             Whether to create gif of weight maps.
@@ -57,8 +53,6 @@ class Spiking:
         self.results_path = results_path
         self.batch_size = batch_size
         self.n_workers = n_workers
-        self.time = time
-        self.dt = dt
         self.update_interval = update_interval / batch_size
         self.plot = plot
         self.gif = gif
@@ -67,14 +61,15 @@ class Spiking:
         self.n_outpt = network.layers["Z"].n
         self.profile = {
             'dataset_name': dataset_name,
-            'method': None,
+            'method': network.method,
             'n_epochs': n_epochs,
             'n_train': None,
             'n_test': None,
         }
 
-        timestep = int(time / dt)
-        self.timestep = timestep
+        self.time = network.time
+        self.dt = network.dt
+        self.timestep = int(self.time / self.dt)
 
         self.start_intensity_scale = 2
         intensity = 255.0 / 8.0 * self.start_intensity_scale
@@ -92,7 +87,6 @@ class Spiking:
 
         # Store network accuracy.
         self.acc_history = {'train_acc': [], 'test_acc': []}
-        self.show_acc = ["N/A", "N/A"]
 
         # Initialize plot class.
         self.visualize = Plot()
@@ -120,7 +114,7 @@ class Spiking:
             network.to("cuda")
 
         # Load train & test data.
-        encoder = PoissonEncoder(time=time, dt=dt)
+        encoder = PoissonEncoder(time=self.time, dt=self.dt)
         self.train_dataset = load_data(dataset_name, encoder, True, intensity)
         self.test_dataset = load_data(dataset_name, encoder, False, intensity)
 
@@ -128,13 +122,13 @@ class Spiking:
         spikes = {}
         for layer in set(network.layers):
             l = network.layers[layer]
-            spikes[layer] = Monitor(l, state_vars=["s"], time=timestep)
+            spikes[layer] = Monitor(l, state_vars=["s"], time=self.timestep)
             network.add_monitor(spikes[layer], name="%s_spikes" % layer)
 
         voltages = {}
         for layer in set(network.layers) - {"X"}:
             l = network.layers[layer]
-            voltages[layer] = Monitor(l, state_vars=["v"], time=timestep)
+            voltages[layer] = Monitor(l, state_vars=["v"], time=self.timestep)
             network.add_monitor(voltages[layer], name="%s_voltages" % layer)
 
         self.spikes = spikes
@@ -149,7 +143,6 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset.
         """
         print("Simultaneous training method.")
-        self.profile['method'] = "Simultaneous"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -230,7 +223,6 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset.
         """
         print("Layer-by-layer training method.")
-        self.profile['method'] = "Layer-by-layer"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -332,7 +324,6 @@ class Spiking:
         """
         # Set test dataset as default dataset.
         dataset = self.test_dataset
-        # dataset = arrange_labels(dataset)
 
         # Check for the mode selected.
         mode_list = ['train', 'validation', 'test']
@@ -349,6 +340,9 @@ class Spiking:
                 dataset = self.train_dataset
             elif data_mode == 'Validation':
                 dataset = self.validation_dataset
+
+        # Rearrange the dataset by label order.
+        # dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -494,8 +488,12 @@ class Spiking:
         # Sum over time dimension (spike ordering doesn't matter).
         n_spikes = spikes.sum(0)
 
-        # Get network prediction which are max of layer-wise firing rates.
-        prediction = torch.sort(n_spikes, descending=True)[1][0]
+        if n_spikes.sum() == 0:
+            # Do not predict any of the class if no spikes are present.
+            prediction = "No spikes"
+        else:
+            # Get network prediction which are max of layer-wise firing rates.
+            prediction = torch.sort(n_spikes, descending=True)[1][0]
 
         # Save "label" vs "prediction" for checking purpose.
         msg = "Ground truth: {}, Predict: {}".format(label, prediction)
@@ -504,7 +502,7 @@ class Spiking:
         self.sl_test_spike.append(n_spikes.cpu().numpy().tolist())
         self.sl_test_spike.append('')
 
-        if label != prediction:
+        if str(label) != str(prediction):
             self.wrong_pred.append(msg)
         else:
             correct_pred += 1
@@ -512,23 +510,32 @@ class Spiking:
 
         return correct_pred
 
-    def show_final_acc(self) -> None:
+    def calc_final_acc(self) -> str:
         """
-        Show final accuracy of the network.
+        Calculate final average accuracies of the network.
+
+        :return: Return train & test accuracies.
         """
         train_acc = test_acc = "N/A"
-        msg = []
 
         if len(self.acc_history['train_acc']) != 0:
             train_acc = '%.2f' % np.mean(self.acc_history['train_acc']) + '%'
-            self.show_acc[0] = train_acc
         if len(self.acc_history['test_acc']) != 0:
             test_acc = '%.2f' % np.mean(self.acc_history['test_acc']) + '%'
-            self.show_acc[1] = test_acc
 
-        acc_msg = "Network train accuracy: " + train_acc
+        return train_acc, test_acc
+
+    def show_final_acc(self) -> None:
+        """
+        Show final average accuracies of the network.
+        """
+        msg = ["+ Network Average Accuracies +"]
+
+        train_acc, test_acc = self.calc_final_acc()
+
+        acc_msg = "Train accuracy: " + train_acc
         msg.append(acc_msg)
-        acc_msg = "Network test accuracy: " + test_acc
+        acc_msg = "Test accuracy: " + test_acc
         msg.append(acc_msg)
 
         msg_wrapper(msg, 2)
@@ -630,6 +637,8 @@ class Spiking:
         """
         Save network profile and experiment conditions.
         """
+        train_acc, test_acc = self.calc_final_acc()
+
         file_path = os.path.join(self.results_path, "results.txt")
         with open(file_path, 'w') as f:
             f.write("# Network Architecture #\n\n")
@@ -637,6 +646,8 @@ class Spiking:
             f.write("    Input  -> {}\n".format(self.network.layers["X"].n))
             f.write("    Hidden -> {}\n".format(self.network.layers["Y"].n))
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
+            f.write("Spike presentation time : {} ms\n".format(self.time))
+            f.write("Simulation time step    : {}\n\n".format(self.dt))
             f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
             f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
@@ -645,8 +656,8 @@ class Spiking:
             f.write("    Training -> {}\n".format(self.profile['n_train']))
             f.write("    Testing  -> {}\n\n".format(self.profile['n_test']))
             f.write("Network's average accuracy:\n")
-            f.write("    Train -> {}\n".format(self.show_acc[0]))
-            f.write("    Test  -> {}\n".format(self.show_acc[1]))
+            f.write("    Train -> {}\n".format(train_acc))
+            f.write("    Test  -> {}\n".format(test_acc))
             f.close()
 
     def save_acc(self) -> None:

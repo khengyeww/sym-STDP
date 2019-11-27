@@ -25,6 +25,7 @@ class HaoAndHuang2019(Network):
         n_outpt: int,
         n_neurons: int = 100,
         inh: float = 17.5,
+        time: int = 350,
         dt: float = 0.5,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
         reduction: Optional[callable] = None,
@@ -36,6 +37,7 @@ class HaoAndHuang2019(Network):
         theta_plus: float = 0.05,
         tc_theta_decay: float = 2e7,
         inpt_shape: Optional[Iterable[int]] = None,
+        method: bool = False,
     ) -> None:
         # language=rst
         """
@@ -46,6 +48,7 @@ class HaoAndHuang2019(Network):
         :param n_outpt: Number of output neurons. Matches the number of
             labels (classes).
         :param inh: Strength of synapse weights from inhibitory to excitatory layer.
+        :param time: Length of Poisson spike train per input variable.
         :param dt: Simulation time step.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events,
             respectively.
@@ -62,6 +65,7 @@ class HaoAndHuang2019(Network):
         :param tc_theta_decay: Time constant of ``HaoExcNodes`` threshold
             potential decay.
         :param inpt_shape: The dimensionality of the input layer.
+        :param method: Training method. Simultaneous if True, Layer-by-layer if False.
         """
         super().__init__(dt=dt)
 
@@ -70,7 +74,11 @@ class HaoAndHuang2019(Network):
         self.inpt_shape = inpt_shape
         self.n_neurons = n_neurons
         self.inh = inh
+        self.time = time
         self.dt = dt
+
+        # Training method.
+        self.method = "Layer-by-layer" if method else "Simultaneous"
 
         # Set default value.
         default_value = (theta_plus, tc_theta_decay)

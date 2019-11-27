@@ -80,10 +80,12 @@ network = HaoAndHuang2019(
     n_outpt=n_outpt,
     n_neurons=n_neurons,
     inh=inh,
+    time=time,
     dt=dt,
     norm_scale=norm_scale,
     theta_plus=theta_plus,
     inpt_shape=(1, 28, 28),
+    method=lbyl,
 )
 
 # Setup network for training & testing.
@@ -95,8 +97,6 @@ snn = Spiking(
     batch_size=batch_size,
     n_epochs=n_epochs,
     n_workers=n_workers,
-    time=time,
-    dt=dt,
     update_interval=update_interval,
     plot=plot,
     gif=gif,
