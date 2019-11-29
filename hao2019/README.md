@@ -25,7 +25,7 @@ Run the script with the `--help` or `-h` flag for more information.
 
  - **sym-STDP-SNN**
 
-	Some of the variables' value that are not mentioned in the paper were obtained from Hao's original code.
+	Some of the parameters' value that are not mentioned in the paper were obtained from Hao's original code.
 
 	Link to [GitHub](https://github.com/haoyz/sym-STDP-SNN).
 
