@@ -30,6 +30,7 @@ class Spiking:
         n_epochs: int = 1,
         n_workers: int = -1,
         update_interval: int = 250,
+        dynamic: bool = False,
         plot: bool = False,
         gif: bool = False,
         gpu: bool = False,
@@ -45,6 +46,7 @@ class Spiking:
         :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
         :param update_interval: Interval to show network accuracy.
+        :param dynamic:         Whether to simulate dynamic environment for continual learning.
         :param plot:            Whether to visualize network's training process.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
@@ -54,6 +56,7 @@ class Spiking:
         self.batch_size = batch_size
         self.n_workers = n_workers
         self.update_interval = update_interval / batch_size
+        self.dynamic = dynamic
         self.plot = plot
         self.gif = gif
         self.gpu = gpu
@@ -147,8 +150,10 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
-        # Rearrange the dataset by label order.
-        dataset = arrange_labels(dataset)
+        # Simulate dynamic environment for continual learning.
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -227,8 +232,10 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
-        # Rearrange the dataset by label order.
-        dataset = arrange_labels(dataset)
+        # Simulate dynamic environment for continual learning.
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -341,8 +348,10 @@ class Spiking:
             elif data_mode == 'Validation':
                 dataset = self.validation_dataset
 
-        # Rearrange the dataset by label order.
-        # dataset = arrange_labels(dataset)
+        # Simulate dynamic environment for continual learning.
+        # if self.dynamic:
+        #     # Rearrange the dataset by label order.
+        #     dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(

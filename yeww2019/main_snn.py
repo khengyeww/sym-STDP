@@ -14,7 +14,6 @@ from utils import msg_wrapper, make_dirs
 dataset_name = 'MNIST'
 n_inpt = 784
 n_outpt = 10
-# model_name = 'hao_2019'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--seed", type=int, default=0)
@@ -32,10 +31,11 @@ parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=2000)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
+parser.add_argument("--dynamic", dest="dynamic", action="store_true")
 parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbyl=False, plot=False, gif=False, gpu=False)
+parser.set_defaults(lbyl=False, dynamic=False, plot=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -54,6 +54,7 @@ dt = args.dt
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 lbyl = args.lbyl
+dynamic = args.dynamic
 plot = args.plot
 gif = args.gif
 gpu = args.gpu
@@ -98,6 +99,7 @@ snn = Spiking(
     n_epochs=n_epochs,
     n_workers=n_workers,
     update_interval=update_interval,
+    dynamic=dynamic,
     plot=plot,
     gif=gif,
     gpu=gpu,
