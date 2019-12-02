@@ -32,10 +32,10 @@ parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=2000)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
-parser.add_argument("--plot", dest="plot", action="store_true")
+parser.add_argument("--dynamic", dest="dynamic", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbyl=False, plot=False, gif=False, gpu=False)
+parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -54,7 +54,7 @@ dt = args.dt
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 lbyl = args.lbyl
-plot = args.plot
+dynamic = args.dynamic
 gif = args.gif
 gpu = args.gpu
 
@@ -98,6 +98,7 @@ snn = Spiking(
     n_epochs=n_epochs,
     n_workers=n_workers,
     update_interval=update_interval,
+    dynamic=dynamic,
     plot=plot,
     gif=gif,
     gpu=gpu,
@@ -143,6 +144,7 @@ for epoch in range(n_epochs):
 
     # Decide number of samples & dataset to use for testing.
     # Default to all samples & test data mode (using test dataset).
+    snn.test_network(n_test, data_mode='train')
     snn.test_network(n_test, data_mode='test')
 
     print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))

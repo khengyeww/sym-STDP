@@ -2,6 +2,7 @@ from typing import Union, Tuple, List, Sequence
 
 import os
 import torch
+import numpy as np
 
 from torchvision import transforms
 from textwrap import wrap
@@ -163,3 +164,42 @@ def get_lrate(
 
     # lrate[0]: learning rates for exc layer, lrate[1]: learning rates for SL layer.
     return lrate[0], lrate[1]
+
+def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Dataset:
+    """
+    Arrange the dataset by labels.
+
+    :param dataset: Original dataset.
+    :param return: Return the arranged dataset.
+    """
+    # Convert type of dataset from torch Tensor to numpy Array.
+    dataset.data = dataset.data.numpy()
+    dataset.targets = dataset.targets.numpy()
+
+    # Get the labels of the dataset.
+    labels = set(dataset.targets)
+    # labels = [2, 1, 0]
+
+    label_list = []
+    new_data = []
+    new_labels = []
+
+    # Create a list of data index arranged by labels.
+    for label in labels:
+        data_index = (dataset.targets == label).nonzero()
+        label_list.append(data_index[0])
+        # print(label, len(data_index[0]))  # Use this to check number of data of each label.
+
+    # Arrange the data and labels.
+    for label in label_list:
+        for index in label:
+            new_data.append(dataset.data[index])
+            new_labels.append(dataset.targets[index])
+
+    new_data = np.asarray(new_data)
+    new_labels = np.asarray(new_labels)
+
+    dataset.data = torch.from_numpy(new_data)
+    dataset.targets = torch.from_numpy(new_labels)
+
+    return dataset

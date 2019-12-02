@@ -110,7 +110,7 @@ class HaoAndHuang2019(Network):
         output_layer = HaoSLNodes(
             n=self.n_outpt,
             traces=True,
-            rest=-45.0,
+            rest=-45.0,  # Originally -60.0 in Hao's code, but doesn't work thus adjusted.
             reset=-45.0,
             thresh=-40.0,
             tc_decay=10.0,

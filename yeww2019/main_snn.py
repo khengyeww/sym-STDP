@@ -32,10 +32,9 @@ parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=2000)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--dynamic", dest="dynamic", action="store_true")
-parser.add_argument("--plot", dest="plot", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbyl=False, dynamic=False, plot=False, gif=False, gpu=False)
+parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False)
 
 args = parser.parse_args()
 
@@ -55,7 +54,6 @@ progress_interval = args.progress_interval
 update_interval = args.update_interval
 lbyl = args.lbyl
 dynamic = args.dynamic
-plot = args.plot
 gif = args.gif
 gpu = args.gpu
 
@@ -72,8 +70,6 @@ epoch_num = 'epoch-' + str(n_epochs)
 data_num = str(n_train) + ',' + str(n_test)
 DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
 RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
-# paths = [RESULTS_PATH]
-# torch.set_printoptions(profile="full")
 
 # Build network model.
 network = HaoAndHuang2019(
@@ -145,8 +141,8 @@ for epoch in range(n_epochs):
 
     # Decide number of samples & dataset to use for testing.
     # Default to all samples & test data mode (using test dataset).
-    # snn.test_network(n_test, data_mode='train')
-    snn.test_network(n_test, data_mode='test', shuffle=True)
+    snn.test_network(n_test, data_mode='train')
+    snn.test_network(n_test, data_mode='test')
 
     print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))
 

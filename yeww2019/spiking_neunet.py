@@ -31,7 +31,6 @@ class Spiking:
         n_workers: int = -1,
         update_interval: int = 250,
         dynamic: bool = False,
-        plot: bool = False,
         gif: bool = False,
         gpu: bool = False,
     ) -> None:
@@ -47,7 +46,6 @@ class Spiking:
         :param n_workers:       Number of workers to use.
         :param update_interval: Interval to show network accuracy.
         :param dynamic:         Whether to simulate dynamic environment for continual learning.
-        :param plot:            Whether to visualize network's training process.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
@@ -57,14 +55,14 @@ class Spiking:
         self.n_workers = n_workers
         self.update_interval = update_interval / batch_size
         self.dynamic = dynamic
-        self.plot = plot
         self.gif = gif
         self.gpu = gpu
 
         self.n_outpt = network.layers["Z"].n
         self.profile = {
-            'dataset_name': dataset_name,
+            'environment': "Dynamic" if self.dynamic else "Static",
             'method': network.method,
+            'dataset_name': dataset_name,
             'n_epochs': n_epochs,
             'n_train': None,
             'n_test': None,
@@ -143,7 +141,7 @@ class Spiking:
         method from Hao's paper.
 
         :param n_samples: Number of samples to use from dataset for training.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Simultaneous training method.")
 
@@ -225,7 +223,7 @@ class Spiking:
         method from Hao's paper.
 
         :param n_samples: Number of samples to use from dataset for training.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Layer-by-layer training method.")
 
@@ -319,7 +317,7 @@ class Spiking:
             phase1 = not phase1
 
     def test_network(
-        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = False
+        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = True
     ) -> None:
         """
         Test the spiking neural network.
@@ -327,7 +325,7 @@ class Spiking:
         :param n_samples: Number of samples to use from dataset for testing.
         :param data_mode: Specifies (train / validation / test) dataset
             to use for testing.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to True.
         """
         # Set test dataset as default dataset.
         dataset = self.test_dataset
@@ -349,9 +347,9 @@ class Spiking:
                 dataset = self.validation_dataset
 
         # Simulate dynamic environment for continual learning.
-        # if self.dynamic:
-        #     # Rearrange the dataset by label order.
-        #     dataset = arrange_labels(dataset)
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -657,8 +655,9 @@ class Spiking:
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
             f.write("Spike presentation time : {} ms\n".format(self.time))
             f.write("Simulation time step    : {}\n\n".format(self.dt))
+            f.write("Environment     : {}\n".format(self.profile['environment']))
+            f.write("Training method : {}\n\n".format(self.profile['method']))
             f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
-            f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
             f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))
             f.write("Number of data used:\n")

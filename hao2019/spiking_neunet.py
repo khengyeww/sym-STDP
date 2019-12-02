@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, transform_image, msg_wrapper
+from utils import load_data, transform_image, msg_wrapper, arrange_labels
 
 
 class Spiking:
@@ -30,7 +30,7 @@ class Spiking:
         n_epochs: int = 1,
         n_workers: int = -1,
         update_interval: int = 250,
-        plot: bool = False,
+        dynamic: bool = False,
         gif: bool = False,
         gpu: bool = False,
     ) -> None:
@@ -45,7 +45,7 @@ class Spiking:
         :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
         :param update_interval: Interval to show network accuracy.
-        :param plot:            Whether to visualize network's training process.
+        :param dynamic:         Whether to simulate dynamic environment for continual learning.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
@@ -54,14 +54,15 @@ class Spiking:
         self.batch_size = batch_size
         self.n_workers = n_workers
         self.update_interval = update_interval / batch_size
-        self.plot = plot
+        self.dynamic = dynamic
         self.gif = gif
         self.gpu = gpu
 
         self.n_outpt = network.layers["Z"].n
         self.profile = {
-            'dataset_name': dataset_name,
+            'environment': "Dynamic" if self.dynamic else "Static",
             'method': network.method,
+            'dataset_name': dataset_name,
             'n_epochs': n_epochs,
             'n_train': None,
             'n_test': None,
@@ -140,12 +141,17 @@ class Spiking:
         method from Hao's paper.
 
         :param n_samples: Number of samples to use from dataset for training.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Simultaneous training method.")
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
+
+        # Simulate dynamic environment for continual learning.
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -217,12 +223,17 @@ class Spiking:
         method from Hao's paper.
 
         :param n_samples: Number of samples to use from dataset for training.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Layer-by-layer training method.")
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
+
+        # Simulate dynamic environment for continual learning.
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -306,7 +317,7 @@ class Spiking:
             phase1 = not phase1
 
     def test_network(
-        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = False
+        self, n_samples: int = None, data_mode: str = "test", shuffle: bool = True
     ) -> None:
         """
         Test the spiking neural network.
@@ -314,7 +325,7 @@ class Spiking:
         :param n_samples: Number of samples to use from dataset for testing.
         :param data_mode: Specifies (train / validation / test) dataset
             to use for testing.
-        :param shuffle: Whether to shuffle the dataset.
+        :param shuffle: Whether to shuffle the dataset. Default to True.
         """
         # Set test dataset as default dataset.
         dataset = self.test_dataset
@@ -334,6 +345,11 @@ class Spiking:
                 dataset = self.train_dataset
             elif data_mode == 'Validation':
                 dataset = self.validation_dataset
+
+        # Simulate dynamic environment for continual learning.
+        if self.dynamic:
+            # Rearrange the dataset by label order.
+            dataset = arrange_labels(dataset)
 
         if n_samples is not None:
             dataset = torch.utils.data.random_split(
@@ -639,8 +655,9 @@ class Spiking:
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
             f.write("Spike presentation time : {} ms\n".format(self.time))
             f.write("Simulation time step    : {}\n\n".format(self.dt))
+            f.write("Environment     : {}\n".format(self.profile['environment']))
+            f.write("Training method : {}\n\n".format(self.profile['method']))
             f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
-            f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
             f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))
             f.write("Number of data used:\n")
