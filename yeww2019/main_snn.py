@@ -96,7 +96,6 @@ snn = Spiking(
     n_workers=n_workers,
     update_interval=update_interval,
     dynamic=dynamic,
-    plot=plot,
     gif=gif,
     gpu=gpu,
 )
