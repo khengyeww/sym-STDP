@@ -23,13 +23,12 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--n_train", type=int, default=None)
 parser.add_argument("--n_test", type=int, default=None)
 parser.add_argument("--n_workers", type=int, default=-1)
-parser.add_argument("--inh", type=float, default=120)
 parser.add_argument("--norm_scale", type=float, default=0.1)
 parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=2000)
+parser.add_argument("--update_interval", type=int, default=5000)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--dynamic", dest="dynamic", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
@@ -45,7 +44,6 @@ n_epochs = args.n_epochs
 n_train = args.n_train
 n_test = args.n_test
 n_workers = args.n_workers
-inh = args.inh
 norm_scale = args.norm_scale
 theta_plus = args.theta_plus
 time = args.time
@@ -76,7 +74,6 @@ network = HaoAndHuang2019(
     n_inpt=n_inpt,
     n_outpt=n_outpt,
     n_neurons=n_neurons,
-    inh=inh,
     time=time,
     dt=dt,
     norm_scale=norm_scale,
@@ -140,7 +137,7 @@ for epoch in range(n_epochs):
 
     # Decide number of samples & dataset to use for testing.
     # Default to all samples & test data mode (using test dataset).
-    snn.test_network(n_test, data_mode='train')
+    # snn.test_network(n_train, data_mode='train')
     snn.test_network(n_test, data_mode='test')
 
     print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))

@@ -13,7 +13,8 @@ class DA_STDP(LearningRule):
     # language=rst
     """
     Symmetric STDP rule involving both pre- and post-synaptic spiking activity.
-    Both pre- and post-synpatic update are positive.
+    Both pre- and post-synpatic update are positive. Adapted from `(Hao & Huang 2019)
+    <https://www.sciencedirect.com/science/article/pii/S0893608019302680>`_.
     """
 
     def __init__(
@@ -27,6 +28,7 @@ class DA_STDP(LearningRule):
         # language=rst
         """
         Constructor for ``DA_STDP`` learning rule.
+
         :param connection: An ``AbstractConnection`` object whose weights the
             ``DA_STDP`` learning rule will modify.
         :param nu: Single or pair of learning rates for pre- and post-synaptic events.

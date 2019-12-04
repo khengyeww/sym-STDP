@@ -17,6 +17,8 @@ from bindsnet.analysis.plotting import (
     plot_voltages,
 )
 
+from utils import make_dirs
+
 
 class Plot:
     """
@@ -33,6 +35,17 @@ class Plot:
     cmap: str = 'BuPu'
     DPI: int = 300
     weight_map_images = []
+
+    def __init__(
+        self,
+        results_path: str,
+    ) -> None:
+        """
+        Constructor for class Plot.
+
+        :param results_path: Path to save plots and figures.
+        """
+        self.results_path = results_path
 
     def plot_weight_maps(
         self,
@@ -190,6 +203,9 @@ class Plot:
         :param dpi: Output resolution to use when saving image.
         :param file_path: Path (contains filename) to use when saving the object.
         """
+        # Setup directories within path.
+        make_dirs(self.results_path)
+
         plt.savefig(file_path, dpi=dpi, bbox_inches='tight')
 
     def save_wmaps_gif(self, file_path: str = str(uuid.uuid4())) -> None:

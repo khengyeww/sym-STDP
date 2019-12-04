@@ -117,7 +117,8 @@ class HaoExcNodes(Nodes):
         self.refrac_count.masked_fill_(self.s, self.refrac)
         self.v.masked_fill_(self.s, self.reset)
         if self.learning:
-            self.theta += (10 / (self.theta - 10).abs()) * self.theta_plus * self.s.float().sum(0)
+            scaling_factor = 10 / (self.theta - 10).abs()
+            self.theta += scaling_factor * self.theta_plus * self.s.float().sum(0)
 
         # voltage clipping to lowerbound
         if self.lbound is not None:
