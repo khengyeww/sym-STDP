@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, transform_image, msg_wrapper, arrange_labels
+from utils import load_data, transform_image, msg_wrapper, sample_from_class, arrange_labels
 
 
 class Spiking:
@@ -90,7 +90,7 @@ class Spiking:
         self.acc_history = {'train_acc': [], 'test_acc': []}
 
         # Initialize plot class.
-        self.visualize = Plot()
+        self.visualize = Plot(results_path)
 
         # Save initial weights for plot.
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
@@ -140,7 +140,7 @@ class Spiking:
         Train the spiking neural network by using simultaneous training
         method from Hao's paper.
 
-        :param n_samples: Number of samples to use from dataset for training.
+        :param n_samples: Number of samples of each class to use from dataset for training.
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Simultaneous training method.")
@@ -148,15 +148,14 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -222,7 +221,7 @@ class Spiking:
         Train the spiking neural network by using layer-by-layer training
         method from Hao's paper.
 
-        :param n_samples: Number of samples to use from dataset for training.
+        :param n_samples: Number of samples of each class to use from dataset for training.
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Layer-by-layer training method.")
@@ -230,15 +229,14 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -322,7 +320,7 @@ class Spiking:
         """
         Test the spiking neural network.
 
-        :param n_samples: Number of samples to use from dataset for testing.
+        :param n_samples: Number of samples of each class to use from dataset for testing.
         :param data_mode: Specifies (train / validation / test) dataset
             to use for testing.
         :param shuffle: Whether to shuffle the dataset. Default to True.
@@ -346,15 +344,14 @@ class Spiking:
             elif data_mode == 'Validation':
                 dataset = self.validation_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -672,8 +669,9 @@ class Spiking:
         """
         Save network accuracy graph. Also write accuracy of each epoch to file.
         """
-        file_path = os.path.join(self.results_path, "acc_graph.png")
-        self.visualize.plot_accuracy(self.acc_history, file_path=file_path)
+        if all(self.acc_history.values()):
+            file_path = os.path.join(self.results_path, "acc_graph.png")
+            self.visualize.plot_accuracy(self.acc_history, file_path=file_path)
 
         for acc in self.acc_history:
             # Only save to text file when accuracy list is not empty.

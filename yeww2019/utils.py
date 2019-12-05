@@ -165,6 +165,36 @@ def get_lrate(
     # lrate[0]: learning rates for exc layer, lrate[1]: learning rates for SL layer.
     return lrate[0], lrate[1]
 
+
+def sample_from_class(
+    dataset: torch.utils.data.Dataset,
+    n_samples: int,
+) -> torch.utils.data.Dataset:
+    """
+    Stratified sampling. Create a dataset with ``n_samples`` numbers of each class
+    from the original dataset.
+
+    :param dataset: Original dataset.
+    :param n_samples: Number of samples to use from each class.
+    """
+    class_counts = {}
+    new_data = []
+    new_labels = []
+
+    for index, data in enumerate(dataset.data):
+        label = dataset.targets[index]
+        c = label.item()
+        class_counts[c] = class_counts.get(c, 0) + 1
+        if class_counts[c] <= n_samples:
+            new_data.append(torch.unsqueeze(data, 0))
+            new_labels.append(torch.unsqueeze(label, 0))
+
+    dataset.data = torch.cat(new_data)
+    dataset.targets = torch.cat(new_labels)
+
+    return dataset
+
+
 def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Dataset:
     """
     Arrange the dataset by labels.
@@ -181,6 +211,7 @@ def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Datase
     # labels = [2, 1, 0]
 
     label_list = []
+    task_index_list = []
     new_data = []
     new_labels = []
 
@@ -195,6 +226,7 @@ def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Datase
         for index in label:
             new_data.append(dataset.data[index])
             new_labels.append(dataset.targets[index])
+        task_index_list.append(len(new_data) - 1)
 
     new_data = np.asarray(new_data)
     new_labels = np.asarray(new_labels)
@@ -202,4 +234,4 @@ def arrange_labels(dataset: torch.utils.data.Dataset) -> torch.utils.data.Datase
     dataset.data = torch.from_numpy(new_data)
     dataset.targets = torch.from_numpy(new_labels)
 
-    return dataset
+    return dataset, task_index_list
