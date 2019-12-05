@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, transform_image, msg_wrapper, arrange_labels
+from utils import load_data, transform_image, msg_wrapper, sample_from_class, arrange_labels
 
 
 class Spiking:
@@ -87,10 +87,10 @@ class Spiking:
         self.wrong_pred = []
 
         # Store network accuracy.
-        self.acc_history = {'train_acc': [], 'test_acc': []}
+        self.acc_history = {'train_acc': [], 'test_acc': [], 'dynamic_acc': []}
 
         # Initialize plot class.
-        self.visualize = Plot()
+        self.visualize = Plot(results_path)
 
         # Save initial weights for plot.
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
@@ -140,7 +140,7 @@ class Spiking:
         Train the spiking neural network by using simultaneous training
         method from Hao's paper.
 
-        :param n_samples: Number of samples to use from dataset for training.
+        :param n_samples: Number of samples of each class to use from dataset for training.
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Simultaneous training method.")
@@ -148,15 +148,14 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -217,12 +216,15 @@ class Spiking:
 
             network.reset_state_variables()  # Reset state variables.
 
+            if self.dynamic and step in task_index_list:
+                self.test_network_dynamic(task=task_index_list.index(step))
+
     def train_network_lbyl(self, n_samples: int = None, shuffle: bool = False) -> None:
         """
         Train the spiking neural network by using layer-by-layer training
         method from Hao's paper.
 
-        :param n_samples: Number of samples to use from dataset for training.
+        :param n_samples: Number of samples of each class to use from dataset for training.
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Layer-by-layer training method.")
@@ -230,15 +232,14 @@ class Spiking:
         # Set train dataset as default dataset.
         dataset = self.train_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -322,7 +323,7 @@ class Spiking:
         """
         Test the spiking neural network.
 
-        :param n_samples: Number of samples to use from dataset for testing.
+        :param n_samples: Number of samples of each class to use from dataset for testing.
         :param data_mode: Specifies (train / validation / test) dataset
             to use for testing.
         :param shuffle: Whether to shuffle the dataset. Default to True.
@@ -346,15 +347,14 @@ class Spiking:
             elif data_mode == 'Validation':
                 dataset = self.validation_dataset
 
+        # Stratified sampling.
+        if n_samples is not None:
+            dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+
         # Simulate dynamic environment for continual learning.
         if self.dynamic:
             # Rearrange the dataset by label order.
-            dataset = arrange_labels(dataset)
-
-        if n_samples is not None:
-            dataset = torch.utils.data.random_split(
-                dataset, [n_samples, len(dataset) - n_samples]
-            )[0]
+            dataset, task_index_list = arrange_labels(dataset)
 
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
@@ -415,6 +415,76 @@ class Spiking:
             self.acc_history['train_acc'].append(acc)
         elif data_mode == "Test":
             self.acc_history['test_acc'].append(acc)
+
+    def test_network_dynamic(self, task: int) -> None:
+        """
+        Test the network with all previously learned task (dataset).
+
+        :param task: Latest learned task index.
+        """
+        msg = ["-- Test network after learning task '{}'. --".format(task)]
+        msg_wrapper(msg, 1)
+
+        # Change training mode of network to False to freeze parameters for test.
+        self.network.train(False)
+
+        # Rearrange the dataset by label order.
+        dataset, task_index_list = arrange_labels(self.test_dataset)
+
+        # Create a dataset which contains only data of learned task (class).
+        indices = list(range(0, task_index_list[task]))
+        dataset = torch.utils.data.Subset(dataset, indices)
+
+        # Create a dataloader to iterate and batch data.
+        dataloader = self.get_dataloader(dataset, shuffle=False)
+
+        correct_pred = 0
+
+        progress = tqdm(dataloader)
+        for step, batch in enumerate(progress):
+            # Get next input sample.
+            inputs = {"X": batch["encoded_image"].view(self.timestep, 1, 1, 28, 28)}
+            if self.gpu:
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+                batch["label"] = batch["label"].cuda()
+
+            # Run the network on the input.
+            self.network.run(inputs=inputs, time=self.time, input_time_dim=1)
+
+            # Calculate number of spikes from excitatory neurons.
+            exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+
+            # Re-present input sample if less than five spikes.
+            if exc_spike_count < 5:
+                self.rerun_network(ori_image=batch["image"])
+
+            # Get spikes of output neurons.
+            spikes = self.spikes["Z"].get("s").squeeze()
+
+            # Compare ground truth label and prediction label.
+            correct_pred = self.predict(batch["label"], spikes, correct_pred)
+
+            self.network.reset_state_variables()  # Reset state variables.
+
+        # Plot excitatory neurons' weight.
+        exc_weight = self.network.connections[("X", "Y")].w.detach().clone()
+        file_name = "after_task_{}.png".format(task)
+        file_path = os.path.join(self.results_path, file_name)
+        self.visualize.plot_weight_maps(
+            exc_weight, overview=True, save=True, file_path=file_path
+        )
+
+        acc = 100 * correct_pred / len(dataloader)
+        print("Test accuracy after learning task '%s': %.2f%%\n" % (task, acc))
+
+        msg = "After task '%s':\n%.2f" % (task, acc)
+        self.acc_history['dynamic_acc'].append(msg)
+
+        # Change training mode of network back to True.
+        self.network.train(True)
+
+        msg = ["++ Resume learning new task! ++"]
+        msg_wrapper(msg, 1)
 
     def get_dataloader(
         self,
@@ -672,8 +742,10 @@ class Spiking:
         """
         Save network accuracy graph. Also write accuracy of each epoch to file.
         """
-        file_path = os.path.join(self.results_path, "acc_graph.png")
-        self.visualize.plot_accuracy(self.acc_history, file_path=file_path)
+        train_test = {k: v for k, v in self.acc_history.items() if k != 'dynamic_acc'}
+        if all(train_test.values()):
+            file_path = os.path.join(self.results_path, "acc_graph.png")
+            self.visualize.plot_accuracy(train_test, file_path=file_path)
 
         for acc in self.acc_history:
             # Only save to text file when accuracy list is not empty.
