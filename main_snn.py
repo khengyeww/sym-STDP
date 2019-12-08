@@ -5,10 +5,13 @@ import time as date
 
 from time import time as t
 
-from hao2019.model import HaoAndHuang2019, HaoAndHuang2019v2
-from hao2019.spiking_neunet import Spiking
-from hao2019.utils import msg_wrapper, make_dirs
-
+from hao2019 import (
+    HaoAndHuang2019,
+    HaoAndHuang2019v2,
+    Spiking,
+    msg_wrapper,
+    make_dirs,
+)
 
 # Define dataset and number of input / output neurons.
 dataset_name = 'MNIST'
@@ -59,18 +62,13 @@ if n_train is not None:
 if n_test is not None:
     assert (n_test > 0), "Samples for testing must be greater than 0"
 
-n_epochs = 1
-batch_size = 1
-# n_train = 2
-# n_test = 1
-
 # Setup pathnames for saving files.
 ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
 datetime = date.strftime("%Y%m%d-%H%M%S")
 data_name = dataset_name.lower() + '-' + str(n_neurons)
 epoch_num = 'epoch-' + str(n_epochs)
 data_num = str(n_train) + ',' + str(n_test)
-DIR_NAME = '_FINALE_' + datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
+DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
 RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
 # paths = [RESULTS_PATH]
 # torch.set_printoptions(profile="full")
