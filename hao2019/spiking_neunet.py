@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from plot import Plot
-from utils import load_data, transform_image, msg_wrapper, sample_from_class, arrange_labels
+from utils import load_data, transform_image, msg_wrapper, sample_from_class
 
 
 class Spiking:
@@ -30,7 +30,6 @@ class Spiking:
         n_epochs: int = 1,
         n_workers: int = -1,
         update_interval: int = 250,
-        dynamic: bool = False,
         gif: bool = False,
         gpu: bool = False,
     ) -> None:
@@ -45,7 +44,6 @@ class Spiking:
         :param n_epochs:        Number of epochs for training.
         :param n_workers:       Number of workers to use.
         :param update_interval: Interval to show network accuracy.
-        :param dynamic:         Whether to simulate dynamic environment for continual learning.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
         """
@@ -54,13 +52,11 @@ class Spiking:
         self.batch_size = batch_size
         self.n_workers = n_workers
         self.update_interval = update_interval / batch_size
-        self.dynamic = dynamic
         self.gif = gif
         self.gpu = gpu
 
         self.n_outpt = network.layers["Z"].n
         self.profile = {
-            'environment': "Dynamic" if self.dynamic else "Static",
             'method': network.method,
             'dataset_name': dataset_name,
             'n_epochs': n_epochs,
@@ -88,13 +84,14 @@ class Spiking:
 
         # Store network accuracy.
         self.acc_history = {'train_acc': [], 'test_acc': []}
+        self.store_pred = {}
 
         # Initialize plot class.
         self.visualize = Plot(results_path)
 
         # Save initial weights for plot.
-        self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
-        self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
+        self.exc_init_weight = network.connections[("X", "Y")].w
+        self.sl_init_weight = network.connections[("Y", "Z")].w
 
         # Determines number of workers to use.
         if n_workers == -1:
@@ -152,11 +149,6 @@ class Spiking:
         if n_samples is not None:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
-        # Simulate dynamic environment for continual learning.
-        if self.dynamic:
-            # Rearrange the dataset by label order.
-            dataset, task_index_list = arrange_labels(dataset)
-
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
         self.profile['n_train'] = len(dataloader)
@@ -178,7 +170,7 @@ class Spiking:
         for step, batch in enumerate(progress):
             # Plot a weight map image for gif.
             if self.gif and step % gif_interval == 0:
-                exc_weight = network.connections[("X", "Y")].w.detach().clone()
+                exc_weight = network.connections[("X", "Y")].w
                 self.visualize.plot_weight_maps(exc_weight, gif=self.gif)
 
             # Generate 0Hz or 200Hz Poisson rates for SL neurons in training mode.
@@ -233,11 +225,6 @@ class Spiking:
         if n_samples is not None:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
-        # Simulate dynamic environment for continual learning.
-        if self.dynamic:
-            # Rearrange the dataset by label order.
-            dataset, task_index_list = arrange_labels(dataset)
-
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
         self.profile['n_train'] = len(dataloader)
@@ -274,7 +261,7 @@ class Spiking:
             for step, batch in enumerate(progress):
                 # Plot a weight map image for gif.
                 if phase1 and self.gif and step % gif_interval == 0:
-                    exc_weight = network.connections[("X", "Y")].w.detach().clone()
+                    exc_weight = network.connections[("X", "Y")].w
                     self.visualize.plot_weight_maps(exc_weight, gif=self.gif)
 
                 # Get next input sample & SL neurons one-hot spikes.
@@ -348,11 +335,6 @@ class Spiking:
         if n_samples is not None:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
-        # Simulate dynamic environment for continual learning.
-        if self.dynamic:
-            # Rearrange the dataset by label order.
-            dataset, task_index_list = arrange_labels(dataset)
-
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
         self.profile['n_test'] = len(dataloader)
@@ -362,14 +344,14 @@ class Spiking:
         # Change training mode of network to False.
         network.train(False)
 
-        correct_pred = 0
         accuracy = []
+        self.store_pred = {}
 
         progress = tqdm(dataloader)
         for step, batch in enumerate(progress):
             # Calculate network accuracy at every update interval.
             if step % self.update_interval == 0 and step > 0:
-                tmp_acc = 100 * correct_pred / step
+                tmp_acc = 100 * sum(self.store_pred.values()) / step
                 accuracy.append(tmp_acc)
                 print(
                     "\n%s accuracy: %.2f (last), %.2f (average), %.2f (best)"
@@ -401,11 +383,12 @@ class Spiking:
             spikes = self.spikes["Z"].get("s").squeeze()
 
             # Compare ground truth label and prediction label.
-            correct_pred = self.predict(batch["label"], spikes, correct_pred)
+            self.predict(batch["label"], spikes)
 
             network.reset_state_variables()  # Reset state variables.
 
-        acc = 100 * correct_pred / len(dataloader)
+        # Calculate accuracy.
+        acc = 100 * sum(self.store_pred.values()) / len(dataloader)
         print("%s accuracy of current epoch: %.2f%%\n" % (data_mode, acc))
 
         if data_mode == "Train" or data_mode == "Validation":
@@ -471,12 +454,7 @@ class Spiking:
 
             exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
-    def predict(
-        self,
-        label: torch.Tensor,
-        spikes: torch.Tensor,
-        correct_pred: int,
-    ) -> int:
+    def predict(self, label: torch.Tensor, spikes: torch.Tensor) -> None:
         """
         Compare the ground truth label from input sample with prediction label
         from SL neurons' spikes.
@@ -484,8 +462,6 @@ class Spiking:
         :param label: Label of the input sample.
         :param spikes: Binary tensor of shape ``(timestep, n_outpt)`` of 
             a layer's spiking activity.
-        :param correct_pred: Number of correct predictions.
-        :param return: Return number of correct predictions.
         """
         label = label[0]
 
@@ -509,10 +485,13 @@ class Spiking:
         if str(label) != str(prediction):
             self.wrong_pred.append(msg)
         else:
-            correct_pred += 1
             self.right_pred.append(msg)
 
-        return correct_pred
+            if isinstance(prediction, torch.Tensor):
+                prediction = prediction.item()
+
+            # Increment the correctly predicted class.
+            self.store_pred[prediction] = self.store_pred.get(prediction, 0) + 1
 
     def calc_final_acc(self) -> str:
         """
@@ -575,8 +554,8 @@ class Spiking:
 
         :param save_extension: Filename extension for saving plot.
         """
-        exc_final_weight = self.network.connections[("X", "Y")].w.detach().clone()
-        sl_final_weight = self.network.connections[("Y", "Z")].w.detach().clone()
+        exc_final_weight = self.network.connections[("X", "Y")].w
+        sl_final_weight = self.network.connections[("Y", "Z")].w
 
         file_name = "init_exc." + save_extension
         file_path = os.path.join(self.results_path, file_name)
@@ -631,7 +610,7 @@ class Spiking:
         # Save gif.
         if self.gif:
             # Plot the last weight map for gif.
-            weight = self.network.connections[("X", "Y")].w.detach().clone()
+            weight = self.network.connections[("X", "Y")].w
             self.visualize.plot_weight_maps(weight, gif=self.gif)
 
             file_path = os.path.join(self.results_path, "weight_maps.gif")
@@ -652,8 +631,7 @@ class Spiking:
             f.write("    Output -> {}\n\n".format(self.network.layers["Z"].n))
             f.write("Spike presentation time : {} ms\n".format(self.time))
             f.write("Simulation time step    : {}\n\n".format(self.dt))
-            f.write("Environment     : {}\n".format(self.profile['environment']))
-            f.write("Training method : {}\n\n".format(self.profile['method']))
+            f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
             f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))

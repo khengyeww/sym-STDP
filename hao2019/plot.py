@@ -78,6 +78,9 @@ class Plot:
         if save or gif:
             plt.ioff()
 
+        # Detach the weight from computational graph and clone it.
+        weights = weights.detach().clone()
+
         # Number of neurons from front layer.
         n_pre_neu = len(weights)
 

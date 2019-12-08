@@ -5,7 +5,7 @@ import time as date
 
 from time import time as t
 
-from model import HaoAndHuang2019
+from model import HaoAndHuang2019, HaoAndHuang2019v2
 from spiking_neunet import Spiking
 from utils import msg_wrapper, make_dirs
 
@@ -29,9 +29,8 @@ parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
 parser.add_argument("--progress_interval", type=int, default=10)
-parser.add_argument("--update_interval", type=int, default=2000)
+parser.add_argument("--update_interval", type=int, default=2500)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
-parser.add_argument("--dynamic", dest="dynamic", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False)
@@ -52,7 +51,6 @@ dt = args.dt
 progress_interval = args.progress_interval
 update_interval = args.update_interval
 lbyl = args.lbyl
-dynamic = args.dynamic
 gif = args.gif
 gpu = args.gpu
 
@@ -73,7 +71,7 @@ RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
 # torch.set_printoptions(profile="full")
 
 # Build network model.
-network = HaoAndHuang2019(
+network = HaoAndHuang2019v2(
     n_inpt=n_inpt,
     n_outpt=n_outpt,
     n_neurons=n_neurons,

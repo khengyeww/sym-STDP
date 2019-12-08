@@ -3,10 +3,7 @@ from typing import Union, Optional, Sequence
 import torch
 
 from bindsnet.learning import LearningRule
-from bindsnet.network.topology import (
-    AbstractConnection,
-    Connection,
-)
+from bindsnet.network.topology import AbstractConnection, Connection
 
 
 class DA_STDP(LearningRule):
