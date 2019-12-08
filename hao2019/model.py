@@ -6,9 +6,9 @@ from bindsnet.network import Network
 from bindsnet.network.nodes import Input, LIFNodes
 from bindsnet.network.topology import Connection
 
-from node import HaoExcNodes, HaoSLNodes
-from learning import DA_STDP
-from utils import get_network_const, get_lrate
+from .node import HaoExcNodes, HaoSLNodes
+from .learning import DA_STDP
+from .utils import get_network_const, get_lrate
 
 
 class HaoAndHuang2019(Network):

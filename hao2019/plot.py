@@ -17,7 +17,7 @@ from bindsnet.analysis.plotting import (
     plot_voltages,
 )
 
-from utils import make_dirs
+from .utils import make_dirs
 
 
 class Plot:

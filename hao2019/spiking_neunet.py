@@ -11,8 +11,8 @@ from bindsnet.encoding import PoissonEncoder
 from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
-from plot import Plot
-from utils import load_data, transform_image, msg_wrapper, sample_from_class
+from .plot import Plot
+from .utils import load_data, transform_image, msg_wrapper, sample_from_class
 
 
 class Spiking:
