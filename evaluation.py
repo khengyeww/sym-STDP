@@ -16,6 +16,7 @@ from hao2019 import (
     make_dirs,
 )
 
+
 dataset_name = 'MNIST'  # Dataset to use.
 file_name = "results/trained_network.pt"  # Path to trained network.
 

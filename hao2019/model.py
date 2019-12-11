@@ -213,7 +213,7 @@ class HaoAndHuang2019v2(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``HaoAndHuang2019``.
+        Constructor for class ``HaoAndHuang2019v2``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.

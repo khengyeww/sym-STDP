@@ -19,6 +19,7 @@ from hao2019 import (
     make_dirs,
 )
 
+
 # Define dataset and number of input / output neurons.
 dataset_name = 'MNIST'
 n_inpt = 784
