@@ -90,8 +90,8 @@ class Spiking:
         self.visualize = Plot(results_path)
 
         # Save initial weights for plot.
-        self.exc_init_weight = network.connections[("X", "Y")].w
-        self.sl_init_weight = network.connections[("Y", "Z")].w
+        self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
+        self.sl_init_weight = network.connections[("Y", "Z")].w.detach().clone()
 
         # Determines number of workers to use.
         if n_workers == -1:
@@ -242,20 +242,18 @@ class Spiking:
             else:
                 gif_interval = int(data_length / self.n_gif_img)
 
-        # Phase 1
-        # True: Train only hidden (exc, inh) layer.
-        # False: Train only SL layer.
+        # Phase 1: Train only hidden (exc, inh) layer.
+        # Phase 2: Train only SL layer.
         phase1 = True
-        end_train = False
+        phase2 = False
 
-        while not end_train:
+        while phase1 or phase2:
             if phase1:
                 print("\nBegin training for hidden layer.")
-            else:
+            elif phase2:
                 print("\nBegin training for SL layer.")
                 for layer in set(network.layers) - {"Z"}:
                     network.layers[layer].train(False)
-                end_train = True  # Exit loop after finish training SL layer.
 
             progress = tqdm(dataloader)
             for step, batch in enumerate(progress):
@@ -271,7 +269,7 @@ class Spiking:
                 # Generate 0Hz or 200Hz Poisson rates for SL neurons in phase 2.
                 if phase1:
                     clamp = {}
-                else:
+                elif phase2:
                     sl_label = torch.zeros(self.n_outpt)
                     sl_label[batch["label"]] = 200
                     sl_spike = poisson(datum=sl_label, time=self.time, dt=self.dt)
@@ -291,7 +289,7 @@ class Spiking:
                 if exc_spike_count < 5:
                     self.rerun_network(ori_image=batch["image"], clamp=clamp)
 
-                if not phase1:
+                if phase2:
                     self.sl_train_spike.append(batch["label"])
                     sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
                     self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
@@ -299,7 +297,8 @@ class Spiking:
 
                 network.reset_state_variables()  # Reset state variables.
 
-            phase1 = not phase1
+            phase2 = phase1
+            phase1 = False if phase1 else phase1
 
     def test_network(
         self, n_samples: int = None, data_mode: str = "test", shuffle: bool = True
