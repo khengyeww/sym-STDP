@@ -5,13 +5,9 @@ import time as date
 
 from time import time as t
 
-from hao2019 import (
-    HaoAndHuang2019,
-    HaoAndHuang2019v2,
-    Spiking,
-    msg_wrapper,
-    make_dirs,
-)
+from hao2019.model import HaoAndHuang2019, HaoAndHuang2019v2
+from hao2019.spiking_neunet import Spiking
+from hao2019.utils import msg_wrapper, make_dirs
 
 
 # Define dataset and number of input / output neurons.

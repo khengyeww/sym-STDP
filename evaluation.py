@@ -10,11 +10,8 @@ from time import time as t
 
 from bindsnet.network.network import load
 
-from hao2019 import (
-    Spiking,
-    msg_wrapper,
-    make_dirs,
-)
+from hao2019.spiking_neunet import Spiking
+from hao2019.utils import msg_wrapper, make_dirs
 
 
 dataset_name = 'MNIST'  # Dataset to use.
