@@ -12,7 +12,7 @@ from bindsnet.network.network import Network
 from bindsnet.network.monitors import Monitor
 
 from .plot import Plot
-from .utils import load_data, transform_image, msg_wrapper, sample_from_class
+from .utils import load_data, msg_wrapper, sample_from_class
 
 
 class Spiking:
@@ -69,8 +69,7 @@ class Spiking:
         self.timestep = int(self.time / self.dt)
 
         self.start_intensity_scale = 2
-        intensity = 255.0 / 8.0 * self.start_intensity_scale
-        self.start_intensity = intensity
+        self.start_intensity = 256.0 / 8.0 * self.start_intensity_scale
 
         self.train_dataset = None
         self.validation_dataset = None
@@ -113,8 +112,8 @@ class Spiking:
 
         # Load train & test data.
         encoder = PoissonEncoder(time=self.time, dt=self.dt)
-        self.train_dataset = load_data(dataset_name, encoder, True, intensity)
-        self.test_dataset = load_data(dataset_name, encoder, False, intensity)
+        self.train_dataset = load_data(dataset_name, encoder, True, self.start_intensity)
+        self.test_dataset = load_data(dataset_name, encoder, False, self.start_intensity)
 
         # Set up monitors for spikes and voltages.
         spikes = {}
@@ -431,18 +430,19 @@ class Spiking:
             of the original image's pixel intensity.
         :param clamp: Spikes to be clamped to SL neurons.
         """
-        # Calculate number of spikes from excitatory neurons.
-        exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
-
         # Set intensity scale.
         intensity_scale = self.start_intensity_scale
 
-        while exc_spike_count < 5 and intensity_scale < 32:
-            intensity_scale += 1  # Increase firing rate by 32Hz.
+        # Repeat until 5 spikes or above are obtained.
+        while self.spikes["Y"].get("s").sum() < 5 and intensity_scale < 32:
             self.network.reset_state_variables()
 
+            # Increase firing rate by 32Hz.
+            intensity_scale += 1
+            intensity = 256.0 / 8.0 * intensity_scale
+
             # Get new generated spikes.
-            new_image = transform_image(ori_image, intensity_scale, self.start_intensity)
+            new_image = ori_image / self.start_intensity * intensity
             new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
 
             inputs = {"X": new_encoded_image}
@@ -450,8 +450,6 @@ class Spiking:
                 inputs = {k: v.cuda() for k, v in inputs.items()}
 
             self.network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
-
-            exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
 
     def predict(self, label: torch.Tensor, spikes: torch.Tensor) -> None:
         """

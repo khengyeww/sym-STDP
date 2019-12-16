@@ -97,27 +97,6 @@ def make_dirs(path: str) -> None:
     #     os.makedirs(path)
 
 
-def transform_image(
-    image: torch.Tensor, intensity_scale: int, old_intensity: float
-) -> torch.Tensor:
-    """
-    Transform image pixel intensity (which equals to firing rates).
-
-    :param image: Tensor of shape ``[batch_size, *input_shape]``
-        of the original image's pixel intensity.
-    :param intensity_scale: Scale for increasing the pixel intensity.
-    :param old_intensity: Maximum pixel intensity of the original image.
-    :return: Tensor of shape ``[batch_size, *input_shape]`` of transformed image.
-    """
-    intensity = 256.0 / 8.0 * intensity_scale
-    transform = transforms.Compose(
-        [transforms.Lambda(lambda x: x * intensity / old_intensity)]
-    )
-    new_image = transform(image)
-
-    return new_image
-
-
 def get_network_const(n_neurons: int, default_value: List[float]) -> float:
     """
     Get time constant of threshold potential decay & decay factor
