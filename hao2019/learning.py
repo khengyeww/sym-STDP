@@ -9,7 +9,7 @@ from bindsnet.network.topology import AbstractConnection, Connection
 class DA_STDP(LearningRule):
     # language=rst
     """
-    Symmetric STDP rule involving both pre- and post-synaptic spiking activity.
+    Symmetric STDP (DA-STDP) rule involving both pre- and post-synaptic spiking activity.
     Both pre- and post-synpatic update are positive. Adapted from `(Hao & Huang 2019)
     <https://www.sciencedirect.com/science/article/pii/S0893608019302680>`_.
     """
@@ -58,6 +58,10 @@ class DA_STDP(LearningRule):
         Post-pre learning rule for ``Connection`` subclass of ``AbstractConnection``
         class.
         """
+        # Do not update weights if both source and target layers' ``learning`` is False.
+        if not self.source.learning and not self.target.learning:
+            return
+
         batch_size = self.source.batch_size
 
         source_s = self.source.s.view(batch_size, -1).unsqueeze(2).float()
