@@ -1,12 +1,13 @@
 from typing import Tuple, Dict, List
 
+import os
 import uuid
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
 
-from bindsnet.network.network import Network
+from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
 from bindsnet.utils import get_square_weights
 from bindsnet.analysis.plotting import (
@@ -35,17 +36,6 @@ class Plot:
     cmap: str = 'BuPu'
     DPI: int = 300
     weight_map_images = []
-
-    def __init__(
-        self,
-        results_path: str,
-    ) -> None:
-        """
-        Constructor for class Plot.
-
-        :param results_path: Path to save plots and figures.
-        """
-        self.results_path = results_path
 
     def plot_weight_maps(
         self,
@@ -207,7 +197,7 @@ class Plot:
         :param file_path: Path (contains filename) to use when saving the object.
         """
         # Setup directories within path.
-        make_dirs(self.results_path)
+        make_dirs(os.path.dirname(file_path))
 
         plt.savefig(file_path, dpi=dpi, bbox_inches='tight')
 
@@ -218,6 +208,9 @@ class Plot:
         :param file_path: Path (contains filename) to use when saving the object.
         """
         if self.weight_map_images:
+            # Setup directories within path.
+            make_dirs(os.path.dirname(file_path))
+
             imageio.mimwrite(file_path, self.weight_map_images)
 
     def plot_every_step(

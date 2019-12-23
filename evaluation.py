@@ -8,10 +8,10 @@ import time as date
 
 from time import time as t
 
-from bindsnet.network.network import load
+from bindsnet.network import load
 
 from hao2019.spiking_neunet import Spiking
-from hao2019.utils import msg_wrapper, make_dirs
+from hao2019.utils import msg_wrapper
 
 
 dataset_name = 'MNIST'  # Dataset to use.
@@ -87,13 +87,8 @@ print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))
 # ------------------------------------------------------------------------------- #
 
 print("\nSaving network & results... ...\n")
-# Setup directories within path.
-make_dirs(RESULTS_PATH)
-
-# Save network & results.
-snn.save_result()
-# Save weight maps' plots.
-snn.save_wmaps_plot()
+snn.save_result()  # Save network & results.
+snn.save_wmaps_plot()  # Save weight maps' plots.
 
 # Save for checking purpose.
 snn.save_sl_spike()

@@ -86,7 +86,7 @@ class Spiking:
         self.store_pred = {}
 
         # Initialize plot class.
-        self.visualize = Plot(results_path)
+        self.visualize = Plot()
 
         # Save initial weights for plot.
         self.exc_init_weight = network.connections[("X", "Y")].w.detach().clone()
@@ -527,6 +527,9 @@ class Spiking:
         :param content: Content to write to the file.
         :param file_name: Filename to use when saving.
         """
+        # Setup save path.
+        make_dirs(self.results_path)
+
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, 'w') as filehandle:
             filehandle.writelines("%s\n" % line for line in content)
@@ -596,6 +599,9 @@ class Spiking:
         """
         Save trained network & accuracy results.
         """
+        # Setup save path.
+        make_dirs(self.results_path)
+
         # Save trained network.
         file_path = os.path.join(self.results_path, "trained_network.pt")
         self.network.save(file_path)

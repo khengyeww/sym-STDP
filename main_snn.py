@@ -7,7 +7,7 @@ from time import time as t
 
 from hao2019.model import HaoAndHuang2019, HaoAndHuang2019v2
 from hao2019.spiking_neunet import Spiking
-from hao2019.utils import msg_wrapper, make_dirs
+from hao2019.utils import msg_wrapper
 
 
 # Define dataset and number of input / output neurons.
@@ -153,13 +153,8 @@ print("Training complete.\n")
 snn.show_final_acc()
 
 print("\nSaving network & results... ...\n")
-# Setup directories within path.
-make_dirs(RESULTS_PATH)
-
-# Save network & results.
-snn.save_result()
-# Save weight maps' plots.
-snn.save_wmaps_plot()
+snn.save_result()  # Save network & results.
+snn.save_wmaps_plot()  # Save weight maps' plots.
 
 # Save for checking purpose.
 snn.save_sl_spike()
