@@ -32,6 +32,7 @@ class Spiking:
         update_interval: int = 250,
         gif: bool = False,
         gpu: bool = False,
+        debug: bool = False,
     ) -> None:
         """
         Constructor for class Spiking.
@@ -46,6 +47,7 @@ class Spiking:
         :param update_interval: Interval to show network accuracy.
         :param gif:             Whether to create gif of weight maps.
         :param gpu:             Whether to use gpu.
+        :param debug:           Whether to save files for debugging purpose.
         """
         self.network = network
         self.results_path = results_path
@@ -54,6 +56,7 @@ class Spiking:
         self.update_interval = update_interval / batch_size
         self.gif = gif
         self.gpu = gpu
+        self.debug = debug
 
         self.n_outpt = network.layers["Z"].n
         self.profile = {
@@ -200,10 +203,11 @@ class Spiking:
             if exc_spike_count < 5:
                 self.rerun_network(ori_image=batch["image"], clamp=clamp)
 
-            self.sl_train_spike.append(batch["label"])
-            sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
-            self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
-            self.sl_train_spike.append('')
+            if self.debug:
+                self.sl_train_spike.append(batch["label"])
+                sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
+                self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
+                self.sl_train_spike.append('')
 
             network.reset_state_variables()  # Reset state variables.
 
@@ -288,7 +292,7 @@ class Spiking:
                 if exc_spike_count < 5:
                     self.rerun_network(ori_image=batch["image"], clamp=clamp)
 
-                if phase2:
+                if phase2 and self.debug:
                     self.sl_train_spike.append(batch["label"])
                     sl_spike = self.spikes["Z"].get("s").squeeze().sum(0)
                     self.sl_train_spike.append(sl_spike.cpu().numpy().tolist())
@@ -472,18 +476,20 @@ class Spiking:
             # Get network prediction which are max of layer-wise firing rates.
             prediction = torch.sort(n_spikes, descending=True)[1][0]
 
-        # Save "label" vs "prediction" for checking purpose.
-        msg = "Ground truth: {}, Predict: {}".format(label, prediction)
+        if self.debug:
+            # Save "label" vs "prediction" for checking purpose.
+            msg = "Ground truth: {}, Predict: {}".format(label, prediction)
 
-        self.sl_test_spike.append(msg)
-        self.sl_test_spike.append(n_spikes.cpu().numpy().tolist())
-        self.sl_test_spike.append('')
+            self.sl_test_spike.append(msg)
+            self.sl_test_spike.append(n_spikes.cpu().numpy().tolist())
+            self.sl_test_spike.append('')
 
-        if str(label) != str(prediction):
-            self.wrong_pred.append(msg)
-        else:
-            self.right_pred.append(msg)
+            if str(label) != str(prediction):
+                self.wrong_pred.append(msg)
+            else:
+                self.right_pred.append(msg)
 
+        if str(label) == str(prediction):
             if isinstance(prediction, torch.Tensor):
                 prediction = prediction.item()
 
@@ -528,9 +534,9 @@ class Spiking:
         :param file_name: Filename to use when saving.
         """
         # Setup save path.
-        make_dirs(self.results_path)
-
         file_path = os.path.join(self.results_path, file_name)
+        make_dirs(os.path.dirname(file_path))
+
         with open(file_path, 'w') as filehandle:
             filehandle.writelines("%s\n" % line for line in content)
 
@@ -538,15 +544,15 @@ class Spiking:
         """
         Save spike results for checking purpose.
         """
-        # self.write_file(self.sl_train_spike, "sl_train_spike.txt")
-        self.write_file(self.sl_test_spike, "sl_test_spike.txt")
+        # self.write_file(self.sl_train_spike, "debug/sl_train_spike.txt")
+        self.write_file(self.sl_test_spike, "debug/sl_test_spike.txt")
 
     def save_pred(self) -> None:
         """
         Save prediction results for checking purpose.
         """
-        self.write_file(self.right_pred, "right_pred.txt")
-        self.write_file(self.wrong_pred, "wrong_pred.txt")
+        self.write_file(self.right_pred, "debug/right_pred.txt")
+        self.write_file(self.wrong_pred, "debug/wrong_pred.txt")
 
     def save_wmaps_plot(self, save_extension: str = 'png') -> None:
         """
@@ -558,19 +564,19 @@ class Spiking:
         sl_final_weight = self.network.connections[("Y", "Z")].w
 
         file_name = "init_exc." + save_extension
-        file_path = os.path.join(self.results_path, file_name)
+        file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
             self.exc_init_weight, save=True, file_path=file_path
         )
 
         file_name = "final_exc." + save_extension
-        file_path = os.path.join(self.results_path, file_name)
+        file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
             exc_final_weight, save=True, file_path=file_path
         )
 
         file_name = "init_sl." + save_extension
-        file_path = os.path.join(self.results_path, file_name)
+        file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
             self.sl_init_weight,
             fig_shape=(4, 3),
@@ -580,7 +586,7 @@ class Spiking:
         )
 
         file_name = "final_sl." + save_extension
-        file_path = os.path.join(self.results_path, file_name)
+        file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
             sl_final_weight,
             fig_shape=(4, 3),
@@ -590,7 +596,7 @@ class Spiking:
         )
 
         file_name = "exc_overview." + save_extension
-        file_path = os.path.join(self.results_path, file_name)
+        file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
             exc_final_weight, overview=True, save=True, file_path=file_path
         )
@@ -610,6 +616,9 @@ class Spiking:
         self.save_network_details()
         self.save_acc()
 
+        # Save weight maps' plots.
+        self.save_wmaps_plot()
+
         # Save gif.
         if self.gif:
             # Plot the last weight map for gif.
@@ -618,6 +627,11 @@ class Spiking:
 
             file_path = os.path.join(self.results_path, "weight_maps.gif")
             self.visualize.save_wmaps_gif(file_path=file_path)
+
+        # Save for checking purpose (debug).
+        if self.debug:
+            self.save_sl_spike()
+            self.save_pred()
 
     def save_network_details(self) -> None:
         """

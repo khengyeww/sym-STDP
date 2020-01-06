@@ -33,7 +33,8 @@ parser.add_argument("--update_interval", type=int, default=2500)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False)
+parser.add_argument("--debug", dest="debug", action="store_true")
+parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False, debug=False)
 
 args = parser.parse_args()
 
@@ -53,6 +54,7 @@ update_interval = args.update_interval
 lbyl = args.lbyl
 gif = args.gif
 gpu = args.gpu
+debug = args.debug
 
 if n_train is not None:
     assert (n_train > 0), "Samples for training must be greater than 0"
@@ -95,6 +97,7 @@ snn = Spiking(
     update_interval=update_interval,
     gif=gif,
     gpu=gpu,
+    debug=debug,
 )
 
 # ------------------------------------------------------------------------------- #
@@ -153,10 +156,6 @@ print("Training complete.\n")
 snn.show_final_acc()
 
 print("\nSaving network & results... ...\n")
-snn.save_result()  # Save network & results.
-snn.save_wmaps_plot()  # Save weight maps' plots.
-
-# Save for checking purpose.
-snn.save_sl_spike()
-snn.save_pred()
+# Save network & results.
+snn.save_result()
 print(" ... ...done!\n")
