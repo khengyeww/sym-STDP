@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from bindsnet.encoding import poisson
 from bindsnet.encoding import PoissonEncoder
-from bindsnet.network.network import Network
+from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
 
 from .plot import Plot
@@ -52,6 +52,7 @@ class Spiking:
         self.network = network
         self.results_path = results_path
         self.batch_size = batch_size
+        self.n_epochs = n_epochs
         self.n_workers = n_workers
         self.update_interval = update_interval / batch_size
         self.gif = gif
@@ -62,7 +63,6 @@ class Spiking:
         self.profile = {
             'method': network.method,
             'dataset_name': dataset_name,
-            'n_epochs': n_epochs,
             'n_train': None,
             'n_test': None,
         }
@@ -134,7 +134,49 @@ class Spiking:
         self.spikes = spikes
         self.voltages = voltages
 
-    def train_network(self, n_samples: int = None, shuffle: bool = False) -> None:
+    def train_network(self, lbyl_method: bool = False, **kwargs) -> None:
+        """
+        Train the spiking neural network.
+
+        :param lbyl_method: Whether to use layer-by-layer training method.
+
+        Keyword arguments:
+
+        :param n_train: Number of samples of each class to use from dataset for training.
+        :param n_test: Number of samples of each class to use from dataset for testing.
+        :param bool infer_train: Whether to perform inference on train dataset for each epoch.
+        :param bool infer_test: Whether to perform inference on test dataset for each epoch.
+        :param bool shuffle_train: Whether to shuffle dataset for training.
+        :param bool shuffle_test: Whether to shuffle dataset for testing.
+        """
+        # Parse keyword arguments.
+        n_train = kwargs.get("n_train", None)
+        n_test = kwargs.get("n_test", None)
+        infer_train = kwargs.get("infer_train", False)
+        infer_test = kwargs.get("infer_test", False)
+        shuffle_train = kwargs.get("shuffle_train", False)
+        shuffle_test = kwargs.get("shuffle_test", True)
+
+        for epoch in range(self.n_epochs):
+            print("Epoch progress: %d / %d" % (epoch, self.n_epochs))
+
+            if not lbyl_method:
+                self.profile['method'] = "Simultaneous"
+                self.train_network_sim(n_samples=n_train, shuffle=shuffle_train)
+            else:
+                self.profile['method'] = "Layer-by-layer"
+                self.train_network_lbyl(n_samples=n_train, shuffle=shuffle_train)
+
+            # Perform a test on train dataset.
+            if infer_train:
+                self.test_network(n_samples=n_train, data_mode="train", shuffle=shuffle_test)
+            # Perform a test on test dataset.
+            if infer_test:
+                self.test_network(n_samples=n_test, data_mode="test", shuffle=shuffle_test)
+
+        print("Epoch progress: %d / %d" % (epoch + 1, self.n_epochs))
+
+    def train_network_sim(self, n_samples: int = None, shuffle: bool = False) -> None:
         """
         Train the spiking neural network by using simultaneous training
         method from Hao's paper.
@@ -148,7 +190,7 @@ class Spiking:
         dataset = self.train_dataset
 
         # Stratified sampling.
-        if n_samples is not None:
+        if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
         # Create a dataloader to iterate and batch data.
@@ -162,7 +204,7 @@ class Spiking:
 
         # Determine the interval to plot weight map for gif.
         if self.gif:
-            data_length = len(dataloader) * self.profile['n_epochs']
+            data_length = len(dataloader) * self.n_epochs
             if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
@@ -225,7 +267,7 @@ class Spiking:
         dataset = self.train_dataset
 
         # Stratified sampling.
-        if n_samples is not None:
+        if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
         # Create a dataloader to iterate and batch data.
@@ -239,7 +281,7 @@ class Spiking:
 
         # Determine the interval to plot weight map for gif.
         if self.gif:
-            data_length = len(dataloader) * self.profile['n_epochs']
+            data_length = len(dataloader) * self.n_epochs
             if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
@@ -334,7 +376,7 @@ class Spiking:
                 dataset = self.validation_dataset
 
         # Stratified sampling.
-        if n_samples is not None:
+        if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
 
         # Create a dataloader for test data.
@@ -651,7 +693,7 @@ class Spiking:
             f.write("Training method : {}\n".format(self.profile['method']))
             f.write("Dataset name    : {}\n".format(self.profile['dataset_name']))
             f.write("Minibatch size  : {}\n".format(self.batch_size))
-            f.write("Number of epochs: {}\n\n".format(self.profile['n_epochs']))
+            f.write("Number of epochs: {}\n\n".format(self.n_epochs))
             f.write("Number of data used:\n")
             f.write("    Training -> {}\n".format(self.profile['n_train']))
             f.write("    Testing  -> {}\n\n".format(self.profile['n_test']))

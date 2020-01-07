@@ -28,7 +28,6 @@ parser.add_argument("--norm_scale", type=float, default=0.1)
 parser.add_argument("--theta_plus", type=float, default=0.05)
 parser.add_argument("--time", type=int, default=350)
 parser.add_argument("--dt", type=float, default=0.5)
-parser.add_argument("--progress_interval", type=int, default=10)
 parser.add_argument("--update_interval", type=int, default=2500)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
@@ -49,7 +48,6 @@ norm_scale = args.norm_scale
 theta_plus = args.theta_plus
 time = args.time
 dt = args.dt
-progress_interval = args.progress_interval
 update_interval = args.update_interval
 lbyl = args.lbyl
 gif = args.gif
@@ -110,45 +108,24 @@ msg = ["### Begin training. ###"]
 msg_wrapper(msg, 1)
 start = t()
 
-for epoch in range(n_epochs):
-    if epoch != 0:
-        msg = ["+++ Resume training. +++"]
-        msg_wrapper(msg, 1)
+snn.train_network(lbyl_method=lbyl, n_train=n_train, n_test=n_test)
 
-    if epoch % progress_interval == 0:
-        print(
-            "Progress: %d / %d (%.4f minutes)" % (epoch, n_epochs, ((t() - start) / 60))
-        )
-        start = t()
+print("Training complete. (%.4f minutes)\n" % ((t() - start) / 60))
 
-    if not lbyl:
-        # Decide number of samples to use for training.
-        # Default to all samples.
-        snn.train_network(n_train)
-    else:
-        snn.train_network_lbyl(n_train)
+# ------------------------------------------------------------------------------- #
 
-    # ------------------------------------------------------------------------------- #
+"""
+    ### Testing Session ###
+"""
+# Test the network.
+msg = ["--- Begin testing. ---"]
+msg_wrapper(msg, 1)
+start = t()
 
-    """
-        ### Testing Session ###
-    """
-    # Test the network.
-    msg = ["--- Begin testing. ---"]
-    msg_wrapper(msg, 1)
-    start_test = t()
+# [train / validation / test] data_mode available for inference.
+snn.test_network(n_test, data_mode='test')
 
-    # Decide number of samples & dataset to use for testing.
-    # Default to all samples & test data mode (using test dataset).
-    snn.test_network(n_train, data_mode='train')
-    snn.test_network(n_test, data_mode='test')
-
-    print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))
-
-    # ------------------------------------------------------------------------------- #
-
-print("Progress: %d / %d (%.4f minutes)" % (epoch + 1, n_epochs, ((t() - start) / 60)))
-print("Training complete.\n")
+print("Testing complete. (%.4f minutes)\n" % ((t() - start) / 60))
 
 # ------------------------------------------------------------------------------- #
 
