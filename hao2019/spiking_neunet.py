@@ -161,10 +161,8 @@ class Spiking:
             print("Epoch progress: %d / %d" % (epoch, self.n_epochs))
 
             if not lbyl_method:
-                self.profile['method'] = "Simultaneous"
                 self.train_network_sim(n_samples=n_train, shuffle=shuffle_train)
             else:
-                self.profile['method'] = "Layer-by-layer"
                 self.train_network_lbyl(n_samples=n_train, shuffle=shuffle_train)
 
             # Perform a test on train dataset.
@@ -185,6 +183,7 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Simultaneous training method.")
+        self.profile['method'] = "Simultaneous"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -192,10 +191,10 @@ class Spiking:
         # Stratified sampling.
         if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+        self.profile['n_train'] = len(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
-        self.profile['n_train'] = len(dataloader)
 
         network = self.network
 
@@ -204,7 +203,7 @@ class Spiking:
 
         # Determine the interval to plot weight map for gif.
         if self.gif:
-            data_length = len(dataloader) * self.n_epochs
+            data_length = len(dataset) * self.n_epochs
             if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
@@ -262,6 +261,7 @@ class Spiking:
         :param shuffle: Whether to shuffle the dataset. Default to False.
         """
         print("Layer-by-layer training method.")
+        self.profile['method'] = "Layer-by-layer"
 
         # Set train dataset as default dataset.
         dataset = self.train_dataset
@@ -269,10 +269,10 @@ class Spiking:
         # Stratified sampling.
         if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+        self.profile['n_train'] = len(dataset)
 
         # Create a dataloader to iterate and batch data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
-        self.profile['n_train'] = len(dataloader)
 
         network = self.network
 
@@ -281,7 +281,7 @@ class Spiking:
 
         # Determine the interval to plot weight map for gif.
         if self.gif:
-            data_length = len(dataloader) * self.n_epochs
+            data_length = len(dataset) * self.n_epochs
             if data_length <= (self.n_gif_img * 2):
                 gif_interval = 2
             else:
@@ -378,10 +378,10 @@ class Spiking:
         # Stratified sampling.
         if n_samples is not None and n_samples > 0:
             dataset = sample_from_class(dataset=dataset, n_samples=n_samples)
+        self.profile['n_test'] = len(dataset)
 
         # Create a dataloader for test data.
         dataloader = self.get_dataloader(dataset, shuffle=shuffle)
-        self.profile['n_test'] = len(dataloader)
 
         network = self.network
 
@@ -706,7 +706,7 @@ class Spiking:
         """
         Save network accuracy graph. Also write accuracy of each epoch to file.
         """
-        if all(self.acc_history.values()):
+        if any(len(v) > 1 for v in self.acc_history.values()):
             file_path = os.path.join(self.results_path, "acc_graph.png")
             self.visualize.plot_accuracy(self.acc_history, file_path=file_path)
 

@@ -160,12 +160,14 @@ class Plot:
         :param acc_history: List of train and test accuracy of each epoch.
         :param file_path: Path (contains filename) to use when saving the object.
         """
-        epochs = max([len(acc_history[acc]) for acc in acc_history])
-        epochs = np.arange(1, epochs+1)
-
         for acc in acc_history:
             if len(acc_history[acc]) != 0:
+                epochs = len(acc_history[acc])
+                epochs = np.arange(1, epochs+1)
                 plt.plot(epochs, acc_history[acc], label=acc, marker='*')
+
+        epochs = max([len(acc_history[acc]) for acc in acc_history])
+        epochs = np.arange(1, epochs+1)
 
         plt.ylim([0, 100])
         plt.xticks(epochs)
