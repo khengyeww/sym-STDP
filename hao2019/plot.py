@@ -100,7 +100,7 @@ class Plot:
 
             # BindsNET's functions.
             square_weights = get_square_weights(weights, neu_sqrt, size)
-            plot_weights(square_weights, cmap=cmap)
+            plot_weights(square_weights, cmap=cmap, wmin=c_min, wmax=c_max)
         else:
             ### Plot a few of neurons' weight maps only! ###
 

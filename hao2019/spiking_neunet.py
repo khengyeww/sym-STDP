@@ -602,19 +602,27 @@ class Spiking:
 
         :param save_extension: Filename extension for saving plot.
         """
-        exc_final_weight = self.network.connections[("X", "Y")].w
-        sl_final_weight = self.network.connections[("Y", "Z")].w
+        exc_conn = self.network.connections[("X", "Y")]
+        sl_conn = self.network.connections[("Y", "Z")]
 
         file_name = "init_exc." + save_extension
         file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
-            self.exc_init_weight, save=True, file_path=file_path
+            self.exc_init_weight,
+            c_min=exc_conn.wmin,
+            c_max=exc_conn.wmax,
+            save=True,
+            file_path=file_path,
         )
 
         file_name = "final_exc." + save_extension
         file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
-            exc_final_weight, save=True, file_path=file_path
+            exc_conn.w,
+            c_min=exc_conn.wmin,
+            c_max=exc_conn.wmax,
+            save=True,
+            file_path=file_path,
         )
 
         file_name = "init_sl." + save_extension
@@ -622,7 +630,8 @@ class Spiking:
         self.visualize.plot_weight_maps(
             self.sl_init_weight,
             fig_shape=(4, 3),
-            c_max=8.0,
+            c_min=sl_conn.wmin,
+            c_max=sl_conn.wmax,
             save=True,
             file_path=file_path,
         )
@@ -630,9 +639,10 @@ class Spiking:
         file_name = "final_sl." + save_extension
         file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
-            sl_final_weight,
+            sl_conn.w,
             fig_shape=(4, 3),
-            c_max=8.0,
+            c_min=sl_conn.wmin,
+            c_max=sl_conn.wmax,
             save=True,
             file_path=file_path,
         )
@@ -640,7 +650,12 @@ class Spiking:
         file_name = "exc_overview." + save_extension
         file_path = os.path.join(self.results_path, 'w_maps', file_name)
         self.visualize.plot_weight_maps(
-            exc_final_weight, overview=True, save=True, file_path=file_path
+            exc_conn.w,
+            c_min=exc_conn.wmin,
+            c_max=exc_conn.wmax,
+            overview=True,
+            save=True,
+            file_path=file_path,
         )
 
     def save_result(self) -> None:
