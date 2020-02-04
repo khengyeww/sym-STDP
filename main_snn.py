@@ -33,7 +33,7 @@ parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
 parser.add_argument("--debug", dest="debug", action="store_true")
-parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False, debug=False)
+parser.set_defaults(lbyl=False, gif=False, gpu=False, debug=False)
 
 args = parser.parse_args()
 
@@ -69,6 +69,8 @@ DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
 RESULTS_PATH = os.path.join(ROOT_PATH, 'results', DIR_NAME)
 # paths = [RESULTS_PATH]
 # torch.set_printoptions(profile="full")
+
+print('\nSaving results in dir:', DIR_NAME, '\n')
 
 # Build network model.
 network = HaoAndHuang2019v2(

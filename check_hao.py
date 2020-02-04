@@ -38,7 +38,8 @@ parser.add_argument("--update_interval", type=int, default=5000)
 parser.add_argument("--lbyl", dest="lbyl", action="store_true")
 parser.add_argument("--gif", dest="gif", action="store_true")
 parser.add_argument("--gpu", dest="gpu", action="store_true")
-parser.set_defaults(lbyl=False, dynamic=False, gif=False, gpu=False)
+parser.add_argument("--debug", dest="debug", action="store_true")
+parser.set_defaults(lbyl=False, gif=False, gpu=False, debug=False)
 
 args = parser.parse_args()
 
@@ -58,6 +59,7 @@ update_interval = args.update_interval
 lbyl = args.lbyl
 gif = args.gif
 gpu = args.gpu
+debug = args.debug
 
 if n_train is not None:
     assert (n_train > 0), "Samples for training must be greater than 0"
@@ -72,6 +74,8 @@ epoch_num = 'epoch-' + str(n_epochs)
 data_num = str(n_train) + ',' + str(n_test)
 DIR_NAME = datetime + '_' + data_name + '_' + epoch_num + '_' + data_num
 RESULTS_PATH = os.path.join(ROOT_PATH, 'results/hao_result', DIR_NAME)
+
+print('\nSaving results in dir:', DIR_NAME, '\n')
 
 # Build network model.
 network = HaoAndHuang2019v2(
@@ -98,6 +102,7 @@ snn = Spiking(
     update_interval=update_interval,
     gif=gif,
     gpu=gpu,
+    debug=debug,
 )
 
 trained = [
@@ -147,10 +152,6 @@ print("Testing complete. (%.4f minutes)\n" % ((t() - start_test) / 60))
 snn.show_final_acc()
 
 print("\nSaving network & results... ...\n")
-snn.save_result()  # Save network & results.
-snn.save_wmaps_plot()  # Save weight maps' plots.
-
-# Save for checking purpose.
-snn.save_sl_spike()
-snn.save_pred()
+# Save network & results.
+snn.save_result()
 print(" ... ...done!\n")
