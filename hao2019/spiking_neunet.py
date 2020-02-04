@@ -12,7 +12,7 @@ from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
 
 from .plot import Plot
-from .utils import load_data, msg_wrapper, sample_from_class
+from .utils import load_data, make_dirs, msg_wrapper, sample_from_class
 
 
 class Spiking:
