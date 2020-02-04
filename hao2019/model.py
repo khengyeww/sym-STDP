@@ -17,6 +17,11 @@ class HaoAndHuang2019(Network):
     Implements the spiking neural network architecture from `(Hao & Huang 2019)
     <https://www.sciencedirect.com/science/article/pii/S0893608019302680>`_.
     which is based on ``DiehlAndCook2015`` network provided by BindsNET.
+
+    *** NOTE ***
+    This model is not able to replicate the result mentioned in the paper
+    as `exc` and `inh` value is not correctly determined.
+    Use ``HaoAndHuang2019v2`` model instead for better result.
     """
 
     def __init__(
@@ -24,8 +29,10 @@ class HaoAndHuang2019(Network):
         n_inpt: int,
         n_outpt: int,
         n_neurons: int = 100,
-        exc: float = 10.4,
-        inh: float = 17.0,
+        # exc: float = 22.5, # Default value by BindsNET.
+        # inh: float = 17.5, # Default value by BindsNET.
+        exc: float = 10.4, # Default value from Hao's model(?).
+        inh: float = 17.0, # Default value from Hao's model(?).
         time: int = 350,
         dt: float = 0.5,
         nu: Optional[Union[float, Sequence[float]]] = (1e-4, 1e-2),
