@@ -3,6 +3,13 @@
 Near-replication of Hao's SNN model from [this paper](https://www.sciencedirect.com/science/article/pii/S0893608019302680)
 using BindsNET.
 
+**Note:**
+***\*\*\* Updated on 2020/02/04 \*\*\**** 
+
+Original model (`v1`, `v2` models) was not able to replicate the results mentioned in the paper.
+Created a `v3` model which achieves similar results from the paper by
+modifying the weight normalization between `hidden layer -- SL layer`.
+
 ## Requirements
  - Ubuntu 16.04
  - Python 3.6
