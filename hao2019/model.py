@@ -12,7 +12,7 @@ from .connection import YewConnection
 from .utils import get_network_const, get_lrate
 
 
-class HaoAndHuang2019(Network):
+class HaoAndHuang2019v1(Network):
     # language=rst
     """
     Implements the spiking neural network architecture from `(Hao & Huang 2019)
@@ -50,7 +50,7 @@ class HaoAndHuang2019(Network):
     ) -> None:
         # language=rst
         """
-        Constructor for class ``HaoAndHuang2019``.
+        Constructor for class ``HaoAndHuang2019v1``.
 
         :param n_inpt: Number of input neurons. Matches the 1D size of the input data.
         :param n_neurons: Number of excitatory, inhibitory neurons.

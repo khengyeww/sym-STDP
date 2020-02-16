@@ -5,7 +5,7 @@ import time as date
 
 from time import time as t
 
-from hao2019.model import HaoAndHuang2019, HaoAndHuang2019v2, HaoAndHuang2019v3
+from hao2019.model import HaoAndHuang2019v1, HaoAndHuang2019v2, HaoAndHuang2019v3
 from hao2019.spiking_neunet import Spiking
 from hao2019.utils import msg_wrapper
 
