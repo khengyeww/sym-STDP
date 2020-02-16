@@ -416,12 +416,12 @@ class Spiking:
             # Run the network on the input.
             network.run(inputs=inputs, time=self.time, input_time_dim=1)
 
-            # Calculate number of spikes from excitatory neurons.
-            exc_spike_count = self.spikes["Y"].get("s").squeeze().sum()
+            # Calculate number of spikes from SL neurons.
+            sl_spike_count = self.spikes["Z"].get("s").squeeze().sum()
 
-            # Re-present input sample if less than five spikes.
-            if exc_spike_count < 5:
-                self.rerun_network(ori_image=batch["image"])
+            # Re-present input sample if no spikes.
+            if sl_spike_count <= 0:
+                self.rerun_network_for_inference(ori_image=batch["image"])
 
             # Get spikes of output neurons.
             spikes = self.spikes["Z"].get("s").squeeze()
@@ -471,6 +471,7 @@ class Spiking:
         """
         Re-present the input sample with increased firing rate if excitatory neurons
         fire less than five spikes.
+        NOTE: This function is for training.
 
         :param ori_image: Tensor of shape ``[batch_size, *input_shape]``
             of the original image's pixel intensity.
@@ -496,6 +497,39 @@ class Spiking:
                 inputs = {k: v.cuda() for k, v in inputs.items()}
 
             self.network.run(inputs=inputs, time=self.time, input_time_dim=1, clamp=clamp)
+
+    def rerun_network_for_inference(
+        self,
+        ori_image: torch.Tensor,
+    ) -> None:
+        """
+        Re-present the input sample with increased firing rate until SL neurons
+        respond with at least a spike during inference.
+        NOTE: This function is for inference.
+
+        :param ori_image: Tensor of shape ``[batch_size, *input_shape]``
+            of the original image's pixel intensity.
+        """
+        # Set intensity scale.
+        intensity_scale = self.start_intensity_scale
+
+        # Repeat until 5 spikes or above are obtained.
+        while self.spikes["Z"].get("s").sum() <= 0 and intensity_scale < 32:
+            self.network.reset_state_variables()
+
+            # Increase firing rate by 32Hz.
+            intensity_scale += 1
+            intensity = 256.0 / 8.0 * intensity_scale
+
+            # Get new generated spikes.
+            new_image = ori_image / self.start_intensity * intensity
+            new_encoded_image = poisson(datum=new_image, time=self.time, dt=self.dt)
+
+            inputs = {"X": new_encoded_image}
+            if self.gpu:
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+
+            self.network.run(inputs=inputs, time=self.time, input_time_dim=1)
 
     def predict(self, label: torch.Tensor, spikes: torch.Tensor) -> None:
         """
