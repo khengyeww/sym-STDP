@@ -45,7 +45,7 @@ Run the script with the `--help` or `-h` flag for more information.
 
 	Original model used in the paper but was not able to replicate the results.
 
- - **v2**
+ - **v2** (Current default model used in `main_snn.py`.)
 
 	Modified from original (`v1`) model. Removes inhibitory layer and replaces it with a
 	recurrent inhibitory connection in the excitatory layer.
