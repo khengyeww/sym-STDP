@@ -1,14 +1,8 @@
 # Hao's sym-STDP-SNN model
+![update](https://img.shields.io/badge/last%20updated-2020%2F02%2F16-blue)
 
 Near-replication of Hao's SNN model from [this paper](https://www.sciencedirect.com/science/article/pii/S0893608019302680)
 using BindsNET.
-
-**Note:**
-***\*\*\* Updated on 2020/02/04 \*\*\**** 
-
-Original model (`v1`, `v2` models) was not able to replicate the results mentioned in the paper.
-Created a `v3` model which achieves similar results from the paper by
-modifying the weight normalization between `hidden layer -- SL layer`.
 
 ## Requirements
  - Ubuntu 16.04
@@ -44,6 +38,39 @@ python main_snn.py --n_neurons 400 --gpu
 ```
 
 Run the script with the `--help` or `-h` flag for more information.
+
+## Models
+
+ - **v1**
+
+	Original model used in the paper but was not able to replicate the results.
+
+ - **v2**
+
+	Modified from original (`v1`) model. Removes inhibitory layer and replaces it with a
+	recurrent inhibitory connection in the excitatory layer.
+
+ - **v3**
+
+	Based on `v2` model. Modified the weight normalization between `hidden layer -- SL layer` to normalize
+	out-synapses of neurons in SL layer. (Originally normalize in-synapses in the paper.)
+
+## Results
+
+During inference stage, there's a problem of SL neurons not spiking due to insufficient response towards the input sample, 
+and thus can't infer any label for the input sample.
+To counter this problem, added a function to re-present samples with increased firing rates (Hz)
+till SL neurons fires at least a spike. (Similar function for excitatory neurons during training stage.)
+
+**Note:** This function was not mentioned in the paper.
+
+Below table shows approx. test accuracies for each model with or without the function (named `re-input`)
+mentioned above used.
+
+| Model | w/o re-input (%) | w/ re-input (%) |
+| ----- |:----------------:|:---------------:|
+| v2    |      72.53       |      80.14      |
+| v3    |      81.52       |      82.09      |
 
 ## Citation
 
