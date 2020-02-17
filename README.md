@@ -59,13 +59,14 @@ Run the script with the `--help` or `-h` flag for more information.
 
 During inference stage, there's a problem of SL neurons not spiking due to insufficient response towards the input sample, 
 and thus can't infer any label for the input sample.
-To counter this problem, added a function to re-present samples with increased firing rates (Hz)
-till SL neurons fires at least a spike. (Similar function for excitatory neurons during training stage.)
+To counter this problem, added a function (named `re-input` in below table) to re-present samples with
+increased firing rates (Hz) till SL neurons fires at least a spike.
+(Similar function for excitatory neurons during training stage.)
 
 **Note:** This function was not mentioned in the paper.
 
 Below table shows approx. test accuracies for each model with or without the function (named `re-input`)
-mentioned above used.
+mentioned above used. Results of 100 excitatory neurons model trained with 1 epoch:
 
 | Model | w/o re-input (%) | w/ re-input (%) |
 | ----- |:----------------:|:---------------:|
