@@ -84,7 +84,7 @@ class HaoExcNodes(Nodes):
         )  # Set in compute_decays.
 
         self.register_buffer("v", torch.FloatTensor())  # Neuron voltages.
-        self.register_buffer("theta", torch.zeros(*self.shape))  # Adaptive thresholds.
+        self.register_buffer("theta", torch.ones(*self.shape) * 20)  # Adaptive thresholds.
         self.register_buffer(
             "refrac_count", torch.FloatTensor()
         )  # Refractory period counters.
