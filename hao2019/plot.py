@@ -4,6 +4,7 @@ import os
 import uuid
 import torch
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import imageio
 
@@ -36,6 +37,10 @@ class Plot:
     cmap: str = 'BuPu'
     DPI: int = 300
     weight_map_images = []
+
+    # Use this 2 settings to avoid using Type 3 fonts in plots.
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
 
     def plot_weight_maps(
         self,
